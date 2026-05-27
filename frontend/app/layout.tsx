@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import SiteHeader from "@/components/SiteHeader";
-import SiteFooter from "@/components/SiteFooter";
+import { AuthProvider } from "@/components/auth/AuthProvider";
+import AppShell from "@/components/layout/AppShell";
 
 export const metadata: Metadata = {
   title: "BharatLens",
@@ -21,9 +21,9 @@ export default function RootLayout({
       className="h-full antialiased"
     >
       <body className="min-h-full flex flex-col">
-        <SiteHeader />
-        <main className="flex-1">{children}</main>
-        <SiteFooter />
+        <AuthProvider>
+          <AppShell>{children}</AppShell>
+        </AuthProvider>
       </body>
     </html>
   );

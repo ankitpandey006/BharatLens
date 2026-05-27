@@ -94,7 +94,7 @@ export default function ProfileSetupWizard() {
         </div>
         <div className="h-3 rounded-full bg-[#F5F3EE]">
           <div
-            className="h-3 rounded-full bg-[#1A3C6E] transition-all duration-300"
+            className="h-3 rounded-full bg-[#1A3C6E] transition-[width] duration-200 ease-linear"
             style={{ width: `${progress}%` }}
           />
         </div>
@@ -109,7 +109,7 @@ export default function ProfileSetupWizard() {
             <input
               type="text"
               placeholder={`Enter ${field.toLowerCase()}`}
-              className="w-full rounded-2xl border border-[#E5E7EB] bg-white px-4 py-3 text-sm outline-none transition focus:border-[#3B82F6] focus:ring-2 focus:ring-[#3B82F6]/20"
+              className="w-full rounded-2xl border border-[#E5E7EB] bg-white px-4 py-3 text-sm outline-none transition-colors duration-150 focus:border-[#3B82F6] focus:ring-2 focus:ring-[#3B82F6]/20"
             />
           </div>
         ))}
@@ -126,14 +126,14 @@ export default function ProfileSetupWizard() {
           type="button"
           onClick={() => setStepIndex((value) => Math.max(0, value - 1))}
           disabled={stepIndex === 0}
-          className="rounded-full border border-[#E5E7EB] bg-white px-5 py-3 text-sm font-semibold text-[#111827] transition hover:border-[#1A3C6E] disabled:cursor-not-allowed disabled:opacity-45"
+          className="rounded-full border border-[#E5E7EB] bg-white px-5 py-3 text-sm font-semibold text-[#111827] transition-[color,background-color,border-color,text-decoration-color,fill,stroke,transform] duration-200 hover:border-[#1A3C6E] disabled:cursor-not-allowed disabled:opacity-45"
         >
           Back
         </button>
         <button
           type="button"
           onClick={goNext}
-          className="rounded-full bg-[#1A3C6E] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[#3B82F6]"
+          className="rounded-full bg-[#1A3C6E] px-6 py-3 text-sm font-semibold text-white transition-[color,background-color,border-color,text-decoration-color,fill,stroke,transform] duration-200 hover:bg-[#3B82F6]"
         >
           {stepIndex === steps.length - 1 ? "Finish setup" : "Continue"}
         </button>

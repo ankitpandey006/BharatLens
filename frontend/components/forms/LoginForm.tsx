@@ -1,19 +1,36 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function LoginForm() {
   const router = useRouter();
   const supabase = createClient();
+  const { isAuthenticated, authLoading } = useAuth();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    router.prefetch("/dashboard");
+    router.prefetch("/profile/setup");
+  }, [router]);
+
+  useEffect(() => {
+    if (!authLoading && isAuthenticated) {
+      router.replace("/dashboard");
+    }
+  }, [authLoading, isAuthenticated, router]);
 
   const handleGoogleLogin = async () => {
+    setIsSubmitting(true);
+    setMessage("");
+
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
@@ -23,6 +40,7 @@ export default function LoginForm() {
 
     if (error) {
       setMessage(error.message);
+      setIsSubmitting(false);
     }
   };
 
@@ -33,6 +51,9 @@ export default function LoginForm() {
       setMessage("Please enter your email and password.");
       return;
     }
+
+    setIsSubmitting(true);
+    setMessage("");
 
     const authIdentifier = email.includes("@")
       ? { email: email.trim() }
@@ -45,6 +66,7 @@ export default function LoginForm() {
 
     if (error) {
       setMessage(error.message);
+      setIsSubmitting(false);
       return;
     }
 
@@ -52,12 +74,13 @@ export default function LoginForm() {
       data.user?.user_metadata?.profile_completed
     );
 
-    setMessage("Login successful.");
-    router.push(isProfileComplete ? "/dashboard" : "/profile/setup");
+    const destination = isProfileComplete ? "/dashboard" : "/profile/setup";
+
+    router.replace(destination);
   };
 
   return (
-    <div className="w-full max-w-md rounded-3xl border border-[#E5E7EB] bg-white p-6 text-[#111827] shadow-xl shadow-[#1A3C6E]/10 sm:p-8">
+    <div className="w-full max-w-md rounded-3xl border border-[#E5E7EB] bg-white p-6 text-[#111827] shadow-lg shadow-[#1A3C6E]/8 sm:p-8">
       <div className="mb-8 text-center">
         <h2 className="text-2xl font-bold text-[#1A3C6E]">
           Welcome back to BharatLens
@@ -71,9 +94,14 @@ export default function LoginForm() {
       <button
         type="button"
         onClick={handleGoogleLogin}
-        className="mb-4 w-full rounded-2xl border border-[#E5E7EB] bg-white py-3 text-sm font-semibold text-[#111827] transition hover:border-[#1A3C6E] hover:bg-[#F5F3EE]"
+        disabled={isSubmitting}
+        className={`mb-4 w-full rounded-2xl border py-3 text-sm font-semibold transition ${
+          isSubmitting
+            ? "cursor-not-allowed border-[#E5E7EB] bg-[#F5F3EE] text-[#9CA3AF]"
+            : "border-[#E5E7EB] bg-white text-[#111827] hover:border-[#1A3C6E] hover:bg-[#F5F3EE]"
+        }`}
       >
-        Continue with Google
+        {isSubmitting ? "Please wait..." : "Continue with Google"}
       </button>
 
       <div className="mb-4 flex items-center gap-3">
@@ -93,6 +121,7 @@ export default function LoginForm() {
             className="w-full rounded-2xl border border-[#E5E7EB] px-4 py-3 text-sm outline-none transition focus:border-[#3B82F6] focus:ring-2 focus:ring-[#3B82F6]/20"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            disabled={isSubmitting}
             required
           />
         </div>
@@ -105,6 +134,7 @@ export default function LoginForm() {
             className="w-full rounded-2xl border border-[#E5E7EB] px-4 py-3 text-sm outline-none transition focus:border-[#3B82F6] focus:ring-2 focus:ring-[#3B82F6]/20"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            disabled={isSubmitting}
             required
           />
         </div>
@@ -126,9 +156,14 @@ export default function LoginForm() {
 
         <button
           type="submit"
-          className="w-full rounded-2xl bg-[#1A3C6E] py-3 font-semibold text-white transition hover:bg-[#3B82F6]"
+          disabled={isSubmitting}
+          className={`w-full rounded-2xl py-3 font-semibold text-white transition ${
+            isSubmitting
+              ? "cursor-not-allowed bg-[#9BB6E5]"
+              : "bg-[#1A3C6E] hover:bg-[#3B82F6]"
+          }`}
         >
-          Login
+          {isSubmitting ? "Logging in..." : "Login"}
         </button>
       </form>
 

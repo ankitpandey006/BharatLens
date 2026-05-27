@@ -9,7 +9,7 @@ const points = [
 export default function AboutPage() {
   return (
     <div className="mx-auto w-full max-w-5xl px-5 py-12 sm:px-6 lg:px-8">
-        <section className="rounded-3xl border border-[#E5E7EB] bg-white p-6 shadow-xl shadow-[#1A3C6E]/10 sm:p-8">
+        <section className="rounded-3xl border border-[#E5E7EB] bg-white p-6 shadow-lg shadow-[#1A3C6E]/8 sm:p-8">
           <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#3B82F6]">
             About BharatLens
           </p>
