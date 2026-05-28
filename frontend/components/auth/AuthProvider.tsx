@@ -34,15 +34,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     mounted.current = true;
 
-    const finishInitialLoading = () => {
-      if (mounted.current) {
-        setAuthLoading(false);
-      }
-    };
-
-    // Keep session restoration quick to avoid blocking UI.
-    const loadingTimeout = window.setTimeout(finishInitialLoading, 400);
-
     const loadSession = async () => {
       try {
         const {
@@ -56,18 +47,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         if (error) {
           console.error("Auth session restore failed:", error.message);
+
+          try {
+            await supabase.auth.signOut();
+          } catch (signOutError) {
+            console.error("Failed to clear broken auth state:", signOutError);
+          }
+
           setSession(null);
-          void supabase.auth.signOut();
           return;
         }
 
         setSession(initialSession);
+      } catch (error) {
+        console.error("Auth session restore failed:", error);
+        setSession(null);
       } finally {
-        finishInitialLoading();
+        if (mounted.current) {
+          setAuthLoading(false);
+        }
       }
     };
-
-    void loadSession();
 
     const {
       data: { subscription },
@@ -77,12 +77,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       setSession(newSession);
-      finishInitialLoading();
+      setAuthLoading(false);
     });
+
+    void loadSession();
 
     return () => {
       mounted.current = false;
-      window.clearTimeout(loadingTimeout);
       subscription.unsubscribe();
     };
   }, [supabase]);
