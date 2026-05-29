@@ -53,8 +53,7 @@ export default function ProfileSetupWizard() {
       return;
     }
 
-    router.push("/dashboard");
-    router.refresh();
+    router.replace("/dashboard");
   };
 
   const goNext = async () => {
@@ -65,7 +64,8 @@ export default function ProfileSetupWizard() {
       return;
     }
 
-    setStepIndex((value) => value + 1);
+    setMessage("");
+    setStepIndex((value) => Math.min(value + 1, steps.length - 1));
   };
 
   return (

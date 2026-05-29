@@ -1,86 +1,111 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import {
+  ensureSafeBrowserOrigin,
+  getAuthCallbackUrl,
+  safeRedirectPath,
+} from "@/lib/auth/urls";
 import { useAuth } from "@/hooks/useAuth";
+
+const OAUTH_ERROR_MESSAGES: Record<string, string> = {
+  missing_oauth_code: "Sign-in was cancelled or incomplete. Please try again.",
+  oauth_exchange_failed: "Could not complete Google sign-in. Please try again.",
+  bad_oauth_state:
+    "Sign-in session expired or used a different address. Open http://localhost:3000 (not 0.0.0.0) and try again.",
+  supabase_not_configured: "Authentication is not configured. Contact support.",
+};
 
 export default function LoginForm() {
   const router = useRouter();
-  const supabase = createClient();
+  const searchParams = useSearchParams();
+  const supabase = useMemo(() => createClient(), []);
   const { isAuthenticated, authLoading } = useAuth();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [message, setMessage] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formMessage, setFormMessage] = useState("");
+  const [emailLoading, setEmailLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+
+  const oauthErrorCode = searchParams.get("error");
+  const oauthErrorMessage =
+    oauthErrorCode && OAUTH_ERROR_MESSAGES[oauthErrorCode]
+      ? OAUTH_ERROR_MESSAGES[oauthErrorCode]
+      : "";
+  const message = formMessage || oauthErrorMessage;
+
+  const isSubmitting = emailLoading || googleLoading;
 
   useEffect(() => {
-    router.prefetch("/dashboard");
-    router.prefetch("/profile/setup");
-  }, [router]);
+    ensureSafeBrowserOrigin();
+  }, []);
 
   useEffect(() => {
     if (!authLoading && isAuthenticated) {
-      router.replace("/dashboard");
+      const next = safeRedirectPath(searchParams.get("next"));
+      router.replace(next ?? "/dashboard");
     }
-  }, [authLoading, isAuthenticated, router]);
+  }, [authLoading, isAuthenticated, router, searchParams]);
 
   const handleGoogleLogin = async () => {
-    setIsSubmitting(true);
-    setMessage("");
+    ensureSafeBrowserOrigin();
+
+    setGoogleLoading(true);
+    setFormMessage("");
+
+    const redirectTo = getAuthCallbackUrl();
 
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/profile/setup`,
+        redirectTo,
+        skipBrowserRedirect: false,
       },
     });
 
     if (error) {
-      setMessage(error.message);
-      setIsSubmitting(false);
+      setFormMessage(error.message);
+      setGoogleLoading(false);
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    if (!email.trim() || !password) {
-      setMessage("Please enter your email and password.");
+    const cleanEmail = email.trim().toLowerCase();
+
+    if (!cleanEmail || !password) {
+      setFormMessage("Please enter your email and password.");
       return;
     }
 
-    setIsSubmitting(true);
-    setMessage("");
-
-    const authIdentifier = email.includes("@")
-      ? { email: email.trim() }
-      : { phone: email.trim() };
+    setEmailLoading(true);
+    setFormMessage("");
 
     const { data, error } = await supabase.auth.signInWithPassword({
-      ...authIdentifier,
+      email: cleanEmail,
       password,
     });
 
     if (error) {
-      setMessage(error.message);
-      setIsSubmitting(false);
+      setFormMessage(error.message);
+      setEmailLoading(false);
       return;
     }
 
     const isProfileComplete = Boolean(
-      data.user?.user_metadata?.profile_completed
+      data.user?.user_metadata?.profile_completed,
     );
 
-    const destination = isProfileComplete ? "/dashboard" : "/profile/setup";
-
-    router.replace(destination);
+    router.replace(isProfileComplete ? "/dashboard" : "/profile/setup");
   };
 
   return (
-    <div className="w-full max-w-md rounded-3xl border border-[#E5E7EB] bg-white p-6 text-[#111827] shadow-lg shadow-[#1A3C6E]/8 sm:p-8">
+    <div className="w-full max-w-md rounded-3xl border border-[#E5E7EB] bg-white p-6 text-[#111827] shadow-lg shadow-[#1A3C6E]/10 sm:p-8">
       <div className="mb-8 text-center">
         <h2 className="text-2xl font-bold text-[#1A3C6E]">
           Welcome back to BharatLens
@@ -94,14 +119,10 @@ export default function LoginForm() {
       <button
         type="button"
         onClick={handleGoogleLogin}
-        disabled={isSubmitting}
-        className={`mb-4 w-full rounded-2xl border py-3 text-sm font-semibold transition ${
-          isSubmitting
-            ? "cursor-not-allowed border-[#E5E7EB] bg-[#F5F3EE] text-[#9CA3AF]"
-            : "border-[#E5E7EB] bg-white text-[#111827] hover:border-[#1A3C6E] hover:bg-[#F5F3EE]"
-        }`}
+        disabled={isSubmitting || authLoading}
+        className="mb-4 min-h-11 w-full rounded-2xl border border-[#E5E7EB] bg-white py-3 text-sm font-semibold text-[#111827] transition hover:border-[#1A3C6E] hover:bg-[#F5F3EE] disabled:cursor-not-allowed disabled:bg-[#F5F3EE] disabled:text-[#9CA3AF]"
       >
-        {isSubmitting ? "Please wait..." : "Continue with Google"}
+        {googleLoading ? "Redirecting..." : "Continue with Google"}
       </button>
 
       <div className="mb-4 flex items-center gap-3">
@@ -112,29 +133,38 @@ export default function LoginForm() {
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="mb-1.5 block text-sm font-medium">
-            Email or Mobile Number
+          <label htmlFor="email" className="mb-1.5 block text-sm font-medium">
+            Email
           </label>
           <input
-            type="text"
-            placeholder="Email or mobile number"
-            className="w-full rounded-2xl border border-[#E5E7EB] px-4 py-3 text-sm outline-none transition focus:border-[#3B82F6] focus:ring-2 focus:ring-[#3B82F6]/20"
+            id="email"
+            type="email"
+            placeholder="Enter your email"
+            className="min-h-11 w-full rounded-2xl border border-[#E5E7EB] px-4 py-3 text-sm outline-none transition focus:border-[#3B82F6] focus:ring-2 focus:ring-[#3B82F6]/20"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            disabled={isSubmitting}
+            disabled={isSubmitting || authLoading}
+            autoComplete="email"
             required
           />
         </div>
 
         <div>
-          <label className="mb-1.5 block text-sm font-medium">Password</label>
+          <label
+            htmlFor="password"
+            className="mb-1.5 block text-sm font-medium"
+          >
+            Password
+          </label>
           <input
+            id="password"
             type="password"
             placeholder="Password"
-            className="w-full rounded-2xl border border-[#E5E7EB] px-4 py-3 text-sm outline-none transition focus:border-[#3B82F6] focus:ring-2 focus:ring-[#3B82F6]/20"
+            className="min-h-11 w-full rounded-2xl border border-[#E5E7EB] px-4 py-3 text-sm outline-none transition focus:border-[#3B82F6] focus:ring-2 focus:ring-[#3B82F6]/20"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            disabled={isSubmitting}
+            disabled={isSubmitting || authLoading}
+            autoComplete="current-password"
             required
           />
         </div>
@@ -142,6 +172,7 @@ export default function LoginForm() {
         <div className="flex justify-end">
           <Link
             href="/forgot-password"
+            prefetch={false}
             className="text-sm font-medium text-[#3B82F6] transition hover:text-[#1A3C6E]"
           >
             Forgot password?
@@ -156,21 +187,18 @@ export default function LoginForm() {
 
         <button
           type="submit"
-          disabled={isSubmitting}
-          className={`w-full rounded-2xl py-3 font-semibold text-white transition ${
-            isSubmitting
-              ? "cursor-not-allowed bg-[#9BB6E5]"
-              : "bg-[#1A3C6E] hover:bg-[#3B82F6]"
-          }`}
+          disabled={isSubmitting || authLoading}
+          className="min-h-11 w-full rounded-2xl bg-[#1A3C6E] py-3 font-semibold text-white transition hover:bg-[#3B82F6] disabled:cursor-not-allowed disabled:bg-[#9BB6E5]"
         >
-          {isSubmitting ? "Logging in..." : "Login"}
+          {emailLoading ? "Logging in..." : "Login"}
         </button>
       </form>
 
       <p className="mt-6 text-center text-sm text-[#111827]/65">
-        Don’t have an account?{" "}
+        Don&apos;t have an account?{" "}
         <Link
           href="/register"
+          prefetch={false}
           className="font-medium text-[#3B82F6] transition hover:text-[#1A3C6E]"
         >
           Create account

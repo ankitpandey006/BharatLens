@@ -30,7 +30,7 @@ export default function SavedItemCard({ item }: SavedItemCardProps) {
       <p className="mt-2 line-clamp-2 text-sm leading-6 text-[#111827]/80">{item.description}</p>
       <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-[#E5E7EB] pt-4">
         <span className="rounded-full bg-[#EEF2FF] px-3 py-1 text-xs font-medium text-[#1A3C6E]">Deadline: {item.deadline}</span>
-        <button className="rounded-xl border border-[#E5E7EB] bg-white px-3 py-2 text-sm font-medium text-[#111827] transition-colors duration-200 hover:bg-[#F5F3EE]">
+        <button className="min-h-[44px] rounded-xl border border-[#E5E7EB] bg-white px-3 py-2.5 text-sm font-medium text-[#111827] transition-colors duration-200 hover:bg-[#F5F3EE]">
           Remove
         </button>
       </div>

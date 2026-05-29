@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import Link from "next/link";
 import { Mail, ArrowLeft } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { getResetPasswordUrl } from "@/lib/auth/urls";
 
 export default function ForgotPasswordForm() {
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
 
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
@@ -24,7 +25,7 @@ export default function ForgotPasswordForm() {
     setLoading(true);
 
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`,
+      redirectTo: getResetPasswordUrl(),
     });
 
     if (error) {
@@ -78,6 +79,7 @@ export default function ForgotPasswordForm() {
 
         <Link
           href="/login"
+          prefetch={false}
           className="mt-5 flex items-center justify-center gap-2 text-sm font-medium text-[#3B82F6] hover:underline"
         >
           <ArrowLeft size={16} />

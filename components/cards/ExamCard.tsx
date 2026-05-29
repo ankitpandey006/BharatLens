@@ -36,13 +36,13 @@ export default function ExamCard({ exam }: ExamCardProps) {
         <span className="rounded-full bg-[#F0F9FF] px-3 py-1 text-xs font-medium text-[#1A3C6E]">
           Apply By: {exam.applicationDeadline}
         </span>
-        <div className="ml-auto flex gap-2">
-          <button className="rounded-xl border border-[#E5E7EB] bg-white px-3 py-2 text-sm font-medium text-[#111827] transition-colors duration-200 hover:bg-[#F5F3EE]">
+        <div className="grid w-full gap-2 sm:ml-auto sm:flex sm:w-auto">
+          <button className="min-h-[44px] rounded-xl border border-[#E5E7EB] bg-white px-3 py-2.5 text-sm font-medium text-[#111827] transition-colors duration-200 hover:bg-[#F5F3EE]">
             Save
           </button>
           <Link
             href={`/exams/${exam.id}`}
-            className="rounded-xl bg-[#1A3C6E] px-3 py-2 text-sm font-medium text-white transition-colors duration-200 hover:bg-[#3B82F6]"
+            className="inline-flex min-h-[44px] items-center justify-center rounded-xl bg-[#1A3C6E] px-3 py-2.5 text-sm font-medium text-white transition-colors duration-200 hover:bg-[#3B82F6]"
           >
             View Details
           </Link>

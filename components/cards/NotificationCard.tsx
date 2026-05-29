@@ -30,7 +30,7 @@ export default function NotificationCard({ notification }: NotificationCardProps
       <h3 className="mt-3 text-base font-semibold leading-6 text-[#1A3C6E]">{notification.title}</h3>
       <p className="mt-2 text-sm leading-6 text-[#111827]/80">{notification.message}</p>
       <div className="mt-4 flex justify-end">
-        <button className="rounded-xl border border-[#E5E7EB] bg-white px-3 py-2 text-sm font-medium text-[#111827] transition-colors duration-200 hover:bg-[#F5F3EE]">
+        <button className="min-h-[44px] rounded-xl border border-[#E5E7EB] bg-white px-3 py-2.5 text-sm font-medium text-[#111827] transition-colors duration-200 hover:bg-[#F5F3EE]">
           Mark as read
         </button>
       </div>

@@ -1,3 +1,8 @@
+/**
+ * Content service — dummy data layer for BharatLens listings.
+ * TODO: Replace getSchemes/getScholarships/getJobs/getExams with Supabase PostgreSQL queries.
+ * TODO: Replace getSavedItems/getNotifications with authenticated Supabase API routes.
+ */
 import { dummyExams } from "@/data/dummyExams";
 import { dummyJobs } from "@/data/dummyJobs";
 import { dummyNotifications } from "@/data/dummyNotifications";

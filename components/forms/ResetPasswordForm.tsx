@@ -1,13 +1,13 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useMemo } from "react";
 import { Lock } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { buildAbsoluteUrl } from "@/lib/auth/urls";
+import { clearSupabaseAuthStorage } from "@/lib/auth/storage";
 
 export default function ResetPasswordForm() {
-  const router = useRouter();
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
 
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -61,8 +61,10 @@ export default function ResetPasswordForm() {
       scope: "local",
     });
 
+    clearSupabaseAuthStorage();
+
     setTimeout(() => {
-      router.push("/login");
+      window.location.assign(buildAbsoluteUrl("/login?signed_out=1"));
     }, 1500);
   };
 
