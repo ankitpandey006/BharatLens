@@ -1,9 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import {
+  ensureSafeBrowserOrigin,
+  getAuthCallbackUrl,
+} from "@/lib/auth/urls";
 import { useAuth } from "@/hooks/useAuth";
 import {
   User,
@@ -16,7 +20,7 @@ import {
 
 export default function RegisterForm() {
   const router = useRouter();
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
   const { isAuthenticated, authLoading } = useAuth();
 
   const [name, setName] = useState("");
@@ -27,9 +31,8 @@ export default function RegisterForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    router.prefetch("/dashboard");
-    router.prefetch("/profile/setup");
-  }, [router]);
+    ensureSafeBrowserOrigin();
+  }, []);
 
   useEffect(() => {
     if (!authLoading && isAuthenticated) {
@@ -38,13 +41,18 @@ export default function RegisterForm() {
   }, [authLoading, isAuthenticated, router]);
 
   const handleGoogleSignup = async () => {
+    ensureSafeBrowserOrigin();
+
     setIsSubmitting(true);
     setMessage("");
+
+    const redirectTo = getAuthCallbackUrl();
 
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/profile/setup`,
+        redirectTo,
+        skipBrowserRedirect: false,
       },
     });
 
@@ -86,6 +94,7 @@ export default function RegisterForm() {
         data: {
           full_name: name,
         },
+        emailRedirectTo: getAuthCallbackUrl(),
       },
     });
 
@@ -250,6 +259,7 @@ export default function RegisterForm() {
         Already have an account?{" "}
         <Link
           href="/login"
+          prefetch={false}
           className="font-medium text-[#3B82F6] transition hover:text-[#1A3C6E]"
         >
           Login

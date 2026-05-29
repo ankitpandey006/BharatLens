@@ -14,7 +14,8 @@ export default function MobileNav() {
         <Link
           key={link.href}
           href={link.href}
-          className="rounded-2xl bg-white px-4 py-3 text-sm font-medium text-[#111827] transition hover:bg-[#F5F3EE]"
+          prefetch={false}
+          className="min-h-11 rounded-2xl bg-white px-4 py-3 text-sm font-medium text-[#111827] transition hover:bg-[#F5F3EE]"
         >
           {link.label}
         </Link>

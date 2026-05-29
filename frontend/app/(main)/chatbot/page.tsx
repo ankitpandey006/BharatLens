@@ -41,7 +41,7 @@ export default function ChatbotPage() {
               placeholder="Ask BharatLens AI..."
               className="w-full bg-transparent text-sm text-[#111827] outline-none placeholder:text-[#111827]/40"
             />
-            <button className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#1A3C6E] text-white transition hover:bg-[#3B82F6]">
+            <button className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#1A3C6E] text-white transition hover:bg-[#3B82F6]">
               <Send size={17} />
             </button>
           </div>

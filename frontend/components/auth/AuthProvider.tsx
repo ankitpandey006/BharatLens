@@ -12,6 +12,7 @@ import {
 import type { ReactNode } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
+import { redirectToLoginAfterSignOut } from "@/lib/auth/urls";
 
 type AuthContextType = {
   authLoading: boolean;
@@ -24,91 +25,83 @@ type AuthContextType = {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const AUTH_LOADING_TIMEOUT_MS = 800;
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const supabase = useMemo(() => createClient(), []);
   const [session, setSession] = useState<Session | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [isSigningOut, setIsSigningOut] = useState(false);
   const mounted = useRef(true);
+  const signingOutRef = useRef(false);
 
   useEffect(() => {
     mounted.current = true;
+    let loadingSettled = false;
 
-    const loadSession = async () => {
-      try {
-        const {
-          data: { session: initialSession },
-          error,
-        } = await supabase.auth.getSession();
-
-        if (!mounted.current) {
-          return;
-        }
-
-        if (error) {
-          console.error("Auth session restore failed:", error.message);
-
-          try {
-            await supabase.auth.signOut();
-          } catch (signOutError) {
-            console.error("Failed to clear broken auth state:", signOutError);
-          }
-
-          setSession(null);
-          return;
-        }
-
-        setSession(initialSession);
-      } catch (error) {
-        console.error("Auth session restore failed:", error);
-        setSession(null);
-      } finally {
-        if (mounted.current) {
-          setAuthLoading(false);
-        }
+    const finishLoading = () => {
+      if (!mounted.current || loadingSettled) {
+        return;
       }
+      loadingSettled = true;
+      setAuthLoading(false);
     };
+
+    const timeoutId = window.setTimeout(finishLoading, AUTH_LOADING_TIMEOUT_MS);
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, newSession) => {
-      if (!mounted.current) {
+    } = supabase.auth.onAuthStateChange(async (event, newSession) => {
+      if (!mounted.current || signingOutRef.current) {
+        return;
+      }
+
+      if (event === "TOKEN_REFRESHED" && !newSession) {
+        try {
+          await supabase.auth.signOut();
+        } catch {
+          // Clearing local state is enough if sign-out fails.
+        }
+        setSession(null);
+        finishLoading();
+        return;
+      }
+
+      if (event === "SIGNED_OUT") {
+        setSession(null);
+        finishLoading();
         return;
       }
 
       setSession(newSession);
-      setAuthLoading(false);
+      finishLoading();
     });
-
-    void loadSession();
 
     return () => {
       mounted.current = false;
+      window.clearTimeout(timeoutId);
       subscription.unsubscribe();
     };
   }, [supabase]);
 
   const signOut = useCallback(async () => {
-    if (isSigningOut) {
+    if (signingOutRef.current) {
       return;
     }
 
+    signingOutRef.current = true;
     setIsSigningOut(true);
-    setSession(null);
-    setAuthLoading(false);
 
     try {
-      const { error } = await supabase.auth.signOut();
-
-      if (error) {
-        console.error("Failed to sign out:", error.message);
-      }
+      await supabase.auth.signOut();
+    } catch (error) {
+      console.error("Failed to sign out:", error);
     } finally {
-      if (mounted.current) {
-        setIsSigningOut(false);
-      }
+      setSession(null);
+      setAuthLoading(false);
+      redirectToLoginAfterSignOut();
     }
-  }, [isSigningOut, supabase]);
+  }, [supabase])
 
   const value = useMemo(
     () => ({
@@ -119,7 +112,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user: session?.user ?? null,
       signOut,
     }),
-    [authLoading, isSigningOut, session, signOut]
+    [authLoading, isSigningOut, session, signOut],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

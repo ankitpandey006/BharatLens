@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useEffect, useState, useRef } from "react";
 import {
   Bell,
@@ -47,7 +47,6 @@ function isActive(pathname: string, href: string) {
 
 export default function SiteHeader() {
   const pathname = usePathname();
-  const router = useRouter();
   const { isAuthenticated, signOut, isSigningOut } = useAuth();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -117,7 +116,6 @@ export default function SiteHeader() {
     }
 
     await signOut();
-    router.replace("/login");
   };
 
   const navLinkClass = (href: string) => {
@@ -136,7 +134,7 @@ export default function SiteHeader() {
     }`;
   };
 
-  const headerClass = `sticky top-0 z-50 border-b transition-all duration-300 ease-out ${
+  const headerClass = `sticky top-0 z-[70] border-b transition-all duration-300 ease-out pointer-events-auto ${
     isScrolled
       ? "border-[#E5E7EB]/60 bg-[#FFFFFF]/80 shadow-md backdrop-blur-lg"
       : "border-[#E5E7EB]/20 bg-[#F5F3EE]/70 backdrop-blur-md"
@@ -147,6 +145,7 @@ export default function SiteHeader() {
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
         <Link
           href="/"
+          prefetch={false}
           className="group flex min-w-0 items-center gap-2 transition-all duration-300 ease-out hover:scale-[1.02]"
         >
           <span className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-linear-to-br from-[#1A3C6E] to-[#3B82F6] text-sm font-bold text-white shadow-lg transition-all duration-300 ease-out group-hover:shadow-xl">
@@ -172,7 +171,7 @@ export default function SiteHeader() {
         <nav className="hidden items-center gap-2 lg:flex">
           {showAuthenticatedNav ? (
             <>
-              <Link href="/dashboard" className={navLinkClass("/dashboard")}>
+              <Link href="/dashboard" prefetch={false} className={navLinkClass("/dashboard")}>
                 <LayoutDashboard
                   size={18}
                   className="transition-transform duration-300 ease-out group-hover:scale-110"
@@ -214,6 +213,7 @@ export default function SiteHeader() {
                       <Link
                         key={link.href}
                         href={link.href}
+                        prefetch={false}
                         className="group/item flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm text-[#111827]/70 transition-all duration-300 ease-out hover:bg-[#3B82F6]/5 hover:text-[#3B82F6]"
                       >
                         <IconComponent
@@ -227,7 +227,7 @@ export default function SiteHeader() {
                 </div>
               </div>
 
-              <Link href="/chatbot" className={navLinkClass("/chatbot")}>
+              <Link href="/chatbot" prefetch={false} className={navLinkClass("/chatbot")}>
                 <Bot
                   size={18}
                   className="transition-transform duration-300 ease-out group-hover:scale-110"
@@ -236,7 +236,7 @@ export default function SiteHeader() {
                 <div className={navUnderlineClass("/chatbot")} />
               </Link>
 
-              <Link href="/saved" className={navLinkClass("/saved")}>
+              <Link href="/saved" prefetch={false} className={navLinkClass("/saved")}>
                 <Bookmark
                   size={18}
                   className="transition-transform duration-300 ease-out group-hover:scale-110"
@@ -247,6 +247,7 @@ export default function SiteHeader() {
 
               <Link
                 href="/notifications"
+                prefetch={false}
                 className={navLinkClass("/notifications")}
               >
                 <div className="relative">
@@ -287,6 +288,7 @@ export default function SiteHeader() {
                       <Link
                         key={link.href}
                         href={link.href}
+                        prefetch={false}
                         className="group/item flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm text-[#111827]/70 transition-all duration-300 ease-out hover:bg-[#3B82F6]/5 hover:text-[#3B82F6]"
                       >
                         <IconComponent
@@ -321,7 +323,7 @@ export default function SiteHeader() {
             </>
           ) : (
             <>
-              <Link href="/" className={navLinkClass("/")}>
+              <Link href="/" prefetch={false} className={navLinkClass("/")}>
                 <Home
                   size={18}
                   className="transition-transform duration-300 ease-out group-hover:scale-110"
@@ -330,18 +332,19 @@ export default function SiteHeader() {
                 <div className={navUnderlineClass("/")} />
               </Link>
 
-              <Link href="/about" className={navLinkClass("/about")}>
+              <Link href="/about" prefetch={false} className={navLinkClass("/about")}>
                 <span>About</span>
                 <div className={navUnderlineClass("/about")} />
               </Link>
 
-              <Link href="/login" className={navLinkClass("/login")}>
+              <Link href="/login" prefetch={false} className={navLinkClass("/login")}>
                 <span>Login</span>
                 <div className={navUnderlineClass("/login")} />
               </Link>
 
               <Link
                 href="/register"
+                prefetch={false}
                 className="rounded-full bg-linear-to-r from-[#1A3C6E] to-[#3B82F6] px-4 py-2 text-sm font-semibold text-white shadow-lg transition-all duration-300 ease-out hover:scale-105 hover:shadow-xl"
               >
                 Get Started
@@ -354,7 +357,7 @@ export default function SiteHeader() {
           type="button"
           aria-label="Open menu"
           onClick={() => setIsMenuOpen((value) => !value)}
-          className="group inline-flex h-10 w-10 items-center justify-center rounded-xl border border-[#E5E7EB]/60 bg-white/50 text-[#111827] shadow-sm transition-all duration-300 ease-out hover:scale-105 hover:border-[#3B82F6]/40 hover:bg-white hover:shadow-md lg:hidden"
+          className="group pointer-events-auto inline-flex h-11 w-11 items-center justify-center rounded-xl border border-[#E5E7EB]/60 bg-white/50 text-[#111827] shadow-sm transition-all duration-300 ease-out hover:scale-105 hover:border-[#3B82F6]/40 hover:bg-white hover:shadow-md lg:hidden"
         >
           {isMenuOpen ? (
             <X size={20} className="transition-transform duration-300" />
@@ -391,6 +394,8 @@ export default function SiteHeader() {
                 <Link
                   key={link.href}
                   href={link.href}
+                  prefetch={false}
+                  onClick={() => setIsMenuOpen(false)}
                   style={{
                     animation: `slideIn 0.3s ease-out ${idx * 0.05}s backwards`,
                   }}
@@ -425,6 +430,8 @@ export default function SiteHeader() {
                   <Link
                     key={link.href}
                     href={link.href}
+                    prefetch={false}
+                    onClick={() => setIsMenuOpen(false)}
                     style={{
                       animation: `slideIn 0.3s ease-out ${(idx + 5) * 0.05}s backwards`,
                     }}
@@ -463,6 +470,8 @@ export default function SiteHeader() {
               <div className="grid grid-cols-2 gap-3">
                 <Link
                   href="/login"
+                  prefetch={false}
+                  onClick={() => setIsMenuOpen(false)}
                   className="rounded-xl border border-[#E5E7EB]/60 bg-white/50 px-4 py-3 text-center text-sm font-semibold text-[#111827] transition-all duration-300 ease-out hover:border-[#3B82F6]/40 hover:bg-white hover:text-[#3B82F6]"
                 >
                   Login
@@ -470,6 +479,8 @@ export default function SiteHeader() {
 
                 <Link
                   href="/register"
+                  prefetch={false}
+                  onClick={() => setIsMenuOpen(false)}
                   className="rounded-xl bg-linear-to-r from-[#1A3C6E] to-[#3B82F6] px-4 py-3 text-center text-sm font-semibold text-white shadow-lg transition-all duration-300 ease-out hover:shadow-xl"
                 >
                   Get Started

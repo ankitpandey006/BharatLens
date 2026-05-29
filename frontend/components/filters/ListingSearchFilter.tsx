@@ -34,7 +34,7 @@ export default function ListingSearchFilter({
         ) : null}
       </div>
 
-      <div className="grid gap-3 md:grid-cols-[1fr_220px]">
+      <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(180px,220px)]">
         <input
           type="text"
           value={searchValue}

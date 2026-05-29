@@ -5,12 +5,12 @@ import {
   Bot,
   Briefcase,
   CalendarDays,
-  CheckCircle2,
   FileText,
   GraduationCap,
-  LayoutDashboard,
   Sparkles,
   UserRound,
+  Zap,
+  CheckCircle,
 } from "lucide-react";
 import {
   getExams,
@@ -127,6 +127,7 @@ export default function DashboardPage() {
               <div className="mt-6 flex flex-col gap-3 sm:flex-row">
                 <Link
                   href="/profile/setup"
+                  prefetch={false}
                   className="inline-flex items-center justify-center rounded-full bg-white px-5 py-3 text-sm font-semibold text-[#1A3C6E] transition hover:bg-[#F5F3EE]"
                 >
                   Complete Profile
@@ -134,6 +135,7 @@ export default function DashboardPage() {
 
                 <Link
                   href="/chatbot"
+                  prefetch={false}
                   className="inline-flex items-center justify-center rounded-full border border-white/25 px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
                 >
                   Ask BharatLens AI
@@ -172,6 +174,7 @@ export default function DashboardPage() {
               <Link
                 key={item.label}
                 href={item.href}
+                prefetch={false}
                 className="group rounded-3xl border border-[#E5E7EB] bg-white p-5 shadow-sm transition duration-200 hover:-translate-y-1 hover:shadow-lg"
               >
                 <div className="flex items-center justify-between">
@@ -203,6 +206,7 @@ export default function DashboardPage() {
               <Link
                 key={item.title}
                 href={item.href}
+                prefetch={false}
                 className="rounded-3xl border border-[#E5E7EB] bg-white p-5 shadow-sm transition duration-200 hover:border-[#9BB6E5] hover:shadow-md"
               >
                 <div className="flex items-center gap-4">
@@ -229,7 +233,7 @@ export default function DashboardPage() {
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <div className="flex items-center gap-2">
-                    <LayoutDashboard className="text-[#1A3C6E]" size={22} />
+                    <Zap className="text-[#1A3C6E]" size={22} />
                     <h2 className="text-2xl font-bold text-[#111827]">
                       AI recommendations
                     </h2>
@@ -241,6 +245,7 @@ export default function DashboardPage() {
 
                 <Link
                   href="/chatbot"
+                  prefetch={false}
                   className="rounded-full border border-[#E5E7EB] px-4 py-2 text-sm font-semibold text-[#1A3C6E] transition hover:border-[#1A3C6E]"
                 >
                   Ask AI
@@ -281,7 +286,7 @@ export default function DashboardPage() {
             {/* Today Updates */}
             <div className="rounded-3xl border border-[#E5E7EB] bg-white p-6 shadow-sm">
               <div className="flex items-center gap-2">
-                <CheckCircle2 className="text-[#1A3C6E]" size={22} />
+                <CheckCircle className="text-[#1A3C6E]" size={22} />
                 <h2 className="text-2xl font-bold text-[#111827]">
                   Today&apos;s updates
                 </h2>
@@ -331,6 +336,7 @@ export default function DashboardPage() {
 
               <Link
                 href="/chatbot"
+                prefetch={false}
                 className="mt-6 inline-flex rounded-full bg-white px-4 py-2 text-sm font-semibold text-[#1A3C6E] transition hover:bg-[#F5F3EE]"
               >
                 Open assistant
@@ -345,6 +351,7 @@ export default function DashboardPage() {
 
               <Link
                 href="/saved"
+                prefetch={false}
                 className="mt-4 inline-flex text-sm font-bold text-[#1A3C6E] transition hover:text-[#3B82F6]"
               >
                 View saved items

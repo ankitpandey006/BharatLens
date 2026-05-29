@@ -18,17 +18,21 @@ export default function AuthLayout({
     }
   }, [authLoading, isAuthenticated, router]);
 
-  if (isAuthenticated) {
+  if (authLoading) {
     return (
       <div className="min-h-screen bg-[#F5F3EE] text-[#111827]">
         <div className="mx-auto flex min-h-screen max-w-6xl items-center justify-center px-4 py-8">
           <div className="flex items-center gap-3 rounded-2xl border border-[#E5E7EB] bg-white px-4 py-3 shadow-md">
             <span className="h-4 w-4 animate-spin rounded-full border-2 border-[#9BB6E5] border-t-[#1A3C6E]" />
-            <p className="text-sm font-medium text-[#1A3C6E]">Redirecting...</p>
+            <p className="text-sm font-medium text-[#1A3C6E]">Loading...</p>
           </div>
         </div>
       </div>
     );
+  }
+
+  if (isAuthenticated) {
+    return null;
   }
 
   return (
