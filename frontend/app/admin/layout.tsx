@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import AdminSidebar from "@/components/admin/AdminSidebar";
 import AdminHeader from "@/components/admin/AdminHeader";
 import { useAuth } from "@/hooks/useAuth";
@@ -12,14 +12,17 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
   const { authLoading, session } = useAuth();
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   useEffect(() => {
-    if (!authLoading && !session) {
-      router.replace("/login");
+    if (authLoading || session) {
+      return;
     }
-  }, [authLoading, router, session]);
+
+    router.replace(`/login?next=${encodeURIComponent(pathname)}`);
+  }, [authLoading, pathname, router, session]);
 
   useEffect(() => {
     if (!isMobileSidebarOpen) return;

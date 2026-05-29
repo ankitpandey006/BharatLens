@@ -49,6 +49,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const timeoutId = window.setTimeout(finishLoading, AUTH_LOADING_TIMEOUT_MS);
 
+    void supabase.auth.getSession().then(({ data: { session: initialSession } }) => {
+      if (!mounted.current || signingOutRef.current) {
+        return;
+      }
+
+      setSession(initialSession);
+      if (initialSession) {
+        finishLoading();
+      }
+    });
+
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, newSession) => {
@@ -101,7 +112,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setAuthLoading(false);
       redirectToLoginAfterSignOut();
     }
-  }, [supabase])
+  }, [supabase]);
 
   const value = useMemo(
     () => ({

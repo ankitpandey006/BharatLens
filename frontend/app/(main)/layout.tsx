@@ -23,7 +23,8 @@ export default function MainLayout({
     }
 
     if (!session) {
-      router.replace("/login");
+      const next = encodeURIComponent(pathname);
+      router.replace(`/login?next=${next}`);
       return;
     }
 
@@ -33,6 +34,7 @@ export default function MainLayout({
   }, [
     authLoading,
     isProfileSetupRoute,
+    pathname,
     profileCompleted,
     router,
     session,

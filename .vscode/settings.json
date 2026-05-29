@@ -1,0 +1,11 @@
+{
+  "eslint.workingDirectories": [
+    { "directory": "frontend", "changeProcessCWD": true }
+  ],
+  "typescript.tsdk": "frontend/node_modules/typescript/lib",
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/.next": true,
+    "**/dist": true
+  }
+}
