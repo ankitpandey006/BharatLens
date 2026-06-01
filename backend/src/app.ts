@@ -2,9 +2,26 @@ import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
-import { schemeRoutes, scholarshipRoutes, jobRoutes, examRoutes, adminRoutes } from "./routes";
+import {
+  schemeRoutes,
+  scholarshipRoutes,
+  jobRoutes,
+  examRoutes,
+  adminRoutes,
+  authRoutes,
+  searchRoutes,
+  eligibilityRoutes,
+  recommendationRoutes,
+  profileRoutes,
+  notificationsRoutes,
+  savedItemsRoutes,
+  docsRoutes,
+  testRoutes,
+} from "./routes";
+import { env } from "./config/env";
 import { notFoundHandler } from "./middlewares/not-found.middleware";
 import { errorHandler } from "./middlewares/error.middleware";
+import { sendSuccess } from "./utils/response-helper";
 
 const app = express();
 
@@ -12,7 +29,7 @@ app.use(helmet());
 
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL || "http://localhost:3000",
+    origin: env.FRONTEND_URL,
     credentials: true,
   })
 );
@@ -22,21 +39,28 @@ app.use(express.urlencoded({ extended: true }));
 app.use(morgan("dev"));
 
 app.get("/", (_req, res) => {
-  res.json({
-    success: true,
-    message: "BharatLens Backend API is running",
-  });
-});
-
-app.get("/api/health", (_req, res) => {
-  res.json({
-    success: true,
-    status: "healthy",
+  sendSuccess(res, "BharatLens Backend API is running", {
     service: "BharatLens Backend",
     timestamp: new Date().toISOString(),
   });
 });
 
+app.get("/api/health", (_req, res) => {
+  sendSuccess(res, "Backend healthy", {
+    service: "BharatLens Backend",
+    timestamp: new Date().toISOString(),
+  });
+});
+
+app.use("/api/docs", docsRoutes);
+app.use("/api/auth", authRoutes);
+app.use("/api/search", searchRoutes);
+app.use("/api/eligibility", eligibilityRoutes);
+app.use("/api/recommendations", recommendationRoutes);
+app.use("/api/profile", profileRoutes);
+app.use("/api/notifications", notificationsRoutes);
+app.use("/api/saved-items", savedItemsRoutes);
+app.use("/api/test-db", testRoutes);
 app.use("/api/schemes", schemeRoutes);
 app.use("/api/scholarships", scholarshipRoutes);
 app.use("/api/jobs", jobRoutes);

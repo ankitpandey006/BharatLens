@@ -1,9 +1,11 @@
 import { getAllExams, getExamById, type ExamItem } from "../repositories/exam.repository";
+import type { ListQueryInput } from "../validators/query.validator";
+import type { ListResult } from "../types/query.types";
 
-export function fetchAllExams(): ExamItem[] {
-  return getAllExams();
+export async function fetchAllExams(query: ListQueryInput): Promise<ListResult<ExamItem>> {
+  return getAllExams(query);
 }
 
-export function fetchExamById(id: string): ExamItem | undefined {
+export async function fetchExamById(id: string): Promise<ExamItem | null> {
   return getExamById(id);
 }

@@ -17,6 +17,8 @@ export function validate(schema: ZodTypeAny, source: "params" | "body" | "query"
       req.validatedParams = result.data as ParamsDictionary;
     } else if (source === "body") {
       req.validatedBody = result.data as Record<string, unknown>;
+    } else if (source === "query") {
+      req.validatedQuery = result.data as Record<string, unknown>;
     }
 
     return next();

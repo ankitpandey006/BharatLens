@@ -1,9 +1,7 @@
-import dotenv from "dotenv";
 import app from "./app";
+import { env } from "./config/env";
 
-dotenv.config();
-
-const PORT = Number(process.env.PORT) || 5001;
+const PORT = env.PORT;
 
 app.listen(PORT, () => {
   console.log(`BharatLens backend running on http://localhost:${PORT}`);

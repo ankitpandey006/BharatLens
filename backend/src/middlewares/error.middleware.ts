@@ -1,4 +1,5 @@
 import type { Request, Response, NextFunction } from "express";
+import { ZodError } from "zod";
 import { errorResponse } from "../utils/api-response";
 import { AppError } from "../utils/app-error";
 
@@ -14,6 +15,12 @@ export function errorHandler(
 
   if (err instanceof AppError) {
     res.status(err.statusCode).json(errorResponse(err.message));
+    return;
+  }
+
+  if (err instanceof ZodError) {
+    const message = err.issues.map((issue) => issue.message).join(", ");
+    res.status(400).json(errorResponse(`Validation failed: ${message}`));
     return;
   }
 

@@ -5,6 +5,7 @@ declare global {
     interface Request {
       validatedParams?: ParamsDictionary;
       validatedBody?: Record<string, unknown>;
+      validatedQuery?: Record<string, unknown>;
     }
   }
 }
