@@ -17,6 +17,7 @@ export interface SuccessResponse<T> {
 export interface ErrorResponse {
   success: false;
   message: string;
+  error: string;
 }
 
 export function successResponse<T>(message: string, data: T, pagination?: PaginationMeta): SuccessResponse<T> {
@@ -28,9 +29,10 @@ export function successResponse<T>(message: string, data: T, pagination?: Pagina
   };
 }
 
-export function errorResponse(message: string): ErrorResponse {
+export function errorResponse(message: string, error?: string): ErrorResponse {
   return {
     success: false,
     message,
+    error: error ?? message,
   };
 }

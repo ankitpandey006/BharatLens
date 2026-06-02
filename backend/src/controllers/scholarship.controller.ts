@@ -15,7 +15,7 @@ export const getScholarshipByIdHandler = asyncHandler(async (req: Request, res: 
   const scholarship = await fetchScholarshipById(id);
 
   if (!scholarship) {
-    res.status(404).json({ success: false, message: "Scholarship not found" });
+    res.status(404).json({ success: false, message: "Scholarship not found", error: "Scholarship not found" });
     return;
   }
 

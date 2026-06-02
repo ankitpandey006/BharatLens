@@ -5,6 +5,6 @@ export function sendSuccess<T>(res: Response, message: string, data: T, paginati
   res.status(200).json(successResponse(message, data, pagination));
 }
 
-export function sendError(res: Response, message: string, statusCode = 400): void {
-  res.status(statusCode).json(errorResponse(message));
+export function sendError(res: Response, message: string, statusCode = 400, errorDetail?: string): void {
+  res.status(statusCode).json(errorResponse(message, errorDetail));
 }

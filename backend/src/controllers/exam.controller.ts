@@ -15,7 +15,7 @@ export const getExamByIdHandler = asyncHandler(async (req: Request, res: Respons
   const exam = await fetchExamById(id);
 
   if (!exam) {
-    res.status(404).json({ success: false, message: "Exam not found" });
+    res.status(404).json({ success: false, message: "Exam not found", error: "Exam not found" });
     return;
   }
 

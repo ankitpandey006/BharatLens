@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { requireAuth } from "../middlewares/auth.middleware";
+import { validate } from "../middlewares/validate.middleware";
 import {
   checkSavedItemHandler,
   listSavedItemsHandler,
@@ -7,14 +8,12 @@ import {
   removeSavedItemHandler,
   saveItemHandler,
 } from "../controllers/saved-items.controller";
-import { validate } from "../middlewares/validate.middleware";
-import { savedItemCheckSchema, savedItemIdSchema, savedItemsBodySchema, savedItemsUserIdSchema } from "../validators/saved-items.validator";
+import { savedItemCheckSchema, savedItemIdSchema, savedItemsBodySchema } from "../validators/saved-items.validator";
 
 const router = Router();
 
 router.use(requireAuth);
 router.get("/", listSavedItemsHandler);
-router.get("/user/:userId", validate(savedItemsUserIdSchema, "params"), listSavedItemsHandler);
 router.post("/", validate(savedItemsBodySchema, "body"), saveItemHandler);
 router.delete("/item/:itemType/:itemId", validate(savedItemCheckSchema, "params"), removeSavedItemByItemHandler);
 router.delete("/:id", validate(savedItemIdSchema, "params"), removeSavedItemHandler);

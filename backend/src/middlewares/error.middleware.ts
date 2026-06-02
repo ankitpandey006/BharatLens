@@ -14,13 +14,13 @@ export function errorHandler(
   }
 
   if (err instanceof AppError) {
-    res.status(err.statusCode).json(errorResponse(err.message));
+    res.status(err.statusCode).json(errorResponse(err.message, err.message));
     return;
   }
 
   if (err instanceof ZodError) {
     const message = err.issues.map((issue) => issue.message).join(", ");
-    res.status(400).json(errorResponse(`Validation failed: ${message}`));
+    res.status(400).json(errorResponse(`Validation failed: ${message}`, message));
     return;
   }
 

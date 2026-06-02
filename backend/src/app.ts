@@ -14,6 +14,7 @@ import {
   recommendationRoutes,
   profileRoutes,
   notificationsRoutes,
+  savedRoutes,
   savedItemsRoutes,
   docsRoutes,
   testRoutes,
@@ -59,6 +60,7 @@ app.use("/api/eligibility", eligibilityRoutes);
 app.use("/api/recommendations", recommendationRoutes);
 app.use("/api/profile", profileRoutes);
 app.use("/api/notifications", notificationsRoutes);
+app.use("/api/saved", savedRoutes);
 app.use("/api/saved-items", savedItemsRoutes);
 app.use("/api/test-db", testRoutes);
 app.use("/api/schemes", schemeRoutes);

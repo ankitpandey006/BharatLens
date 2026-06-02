@@ -1,16 +1,59 @@
 import type { Request, Response } from "express";
 import { asyncHandler } from "../utils/async-handler";
-import { sendSuccess } from "../utils/response-helper";
-import { getRecommendations } from "../services/recommendation.service";
+import { sendSuccess, sendError } from "../utils/response-helper";
+import {
+  generateRecommendations,
+  getRecommendations,
+  viewRecommendation,
+} from "../services/recommendation.service";
 
-export const recommendationHandler = asyncHandler(async (req: Request, res: Response) => {
-  const body = req.validatedBody as {
-    state?: string;
-    education?: string;
-    occupation?: string;
-    interests?: string[];
-  };
+export const listRecommendationsHandler = asyncHandler(async (req: Request, res: Response) => {
+  const user = req.user;
 
-  const results = await getRecommendations(body);
+  if (!user) {
+    return sendError(res, "Authentication required", 401);
+  }
+
+  const query = req.validatedQuery as { page?: number; limit?: number };
+  const result = await getRecommendations(user.id, query.page ?? 1, query.limit ?? 20);
+  sendSuccess(res, "Recommendations fetched successfully", result);
+});
+
+export const generateRecommendationsHandler = asyncHandler(async (req: Request, res: Response) => {
+  const user = req.user;
+
+  if (!user) {
+    return sendError(res, "Authentication required", 401);
+  }
+
+  const currentProfile = user;
+  const results = await generateRecommendations(user.id, {
+    state: currentProfile.state,
+    category: currentProfile.category,
+    gender: currentProfile.gender,
+    education_level: currentProfile.education_level,
+    occupation: currentProfile.occupation,
+    user_type: currentProfile.user_type,
+    income_range: currentProfile.income_range,
+    dob: currentProfile.dob,
+  });
+
   sendSuccess(res, "Recommendations generated successfully", results);
+});
+
+export const markRecommendationViewedHandler = asyncHandler(async (req: Request, res: Response) => {
+  const user = req.user;
+
+  if (!user) {
+    return sendError(res, "Authentication required", 401);
+  }
+
+  const { id } = req.validatedParams as { id: string };
+  const recommendation = await viewRecommendation(user.id, id);
+
+  if (!recommendation) {
+    return sendError(res, "Recommendation not found", 404);
+  }
+
+  sendSuccess(res, "Recommendation marked as viewed", recommendation);
 });

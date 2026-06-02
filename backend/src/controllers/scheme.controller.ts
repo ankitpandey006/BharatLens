@@ -15,7 +15,7 @@ export const getSchemeByIdHandler = asyncHandler(async (req: Request, res: Respo
   const scheme = await fetchSchemeById(id);
 
   if (!scheme) {
-    res.status(404).json({ success: false, message: "Scheme not found" });
+    res.status(404).json({ success: false, message: "Scheme not found", error: "Scheme not found" });
     return;
   }
 

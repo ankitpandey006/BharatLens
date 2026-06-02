@@ -9,6 +9,7 @@ import eligibilityRoutes from "./eligibility.routes";
 import recommendationRoutes from "./recommendation.routes";
 import profileRoutes from "./profile.routes";
 import notificationsRoutes from "./notifications.routes";
+import savedRoutes from "./saved.routes";
 import savedItemsRoutes from "./saved-items.routes";
 import docsRoutes from "./docs.routes";
 import testRoutes from "./test.route";
@@ -25,6 +26,7 @@ export {
   recommendationRoutes,
   profileRoutes,
   notificationsRoutes,
+  savedRoutes,
   savedItemsRoutes,
   docsRoutes,
   testRoutes,

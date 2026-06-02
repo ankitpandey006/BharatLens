@@ -12,6 +12,5 @@
     "**/node_modules": true,
     "**/.next": true,
     "**/dist": true
-  },
-  "liveServer.settings.multiRootWorkspaceName": "BharatLens"
+  }
 }

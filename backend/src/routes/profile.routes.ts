@@ -1,11 +1,21 @@
 import { Router } from "express";
-import { getProfileHandler, updateProfileHandler } from "../controllers/profile.controller";
+import { requireAuth } from "../middlewares/auth.middleware";
+import {
+  createOwnProfileHandler,
+  getOwnProfileHandler,
+  updateOwnProfileHandler,
+  getProfileHandler,
+} from "../controllers/profile.controller";
 import { validate } from "../middlewares/validate.middleware";
-import { profileIdParamSchema, profileUpdateSchema } from "../validators/profile.validator";
+import { profileCreateSchema, profileIdParamSchema, profileUpdateSchema } from "../validators/profile.validator";
 
 const router = Router();
 
+router.get("/me", requireAuth, getOwnProfileHandler);
+router.patch("/me", requireAuth, validate(profileUpdateSchema, "body"), updateOwnProfileHandler);
+router.get("/", requireAuth, getOwnProfileHandler);
+router.post("/", requireAuth, validate(profileCreateSchema, "body"), createOwnProfileHandler);
+router.patch("/", requireAuth, validate(profileUpdateSchema, "body"), updateOwnProfileHandler);
 router.get("/:id", validate(profileIdParamSchema, "params"), getProfileHandler);
-router.put("/:id", validate(profileIdParamSchema, "params"), validate(profileUpdateSchema, "body"), updateProfileHandler);
 
 export default router;

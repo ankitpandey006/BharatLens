@@ -15,7 +15,7 @@ export const getJobByIdHandler = asyncHandler(async (req: Request, res: Response
   const job = await fetchJobById(id);
 
   if (!job) {
-    res.status(404).json({ success: false, message: "Job not found" });
+    res.status(404).json({ success: false, message: "Job not found", error: "Job not found" });
     return;
   }
 
