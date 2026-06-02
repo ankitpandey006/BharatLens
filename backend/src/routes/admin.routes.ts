@@ -20,6 +20,7 @@ import {
   unpublishAdminItemHandler,
   updateAdminItemHandler,
   verifyAdminSourceHandler,
+  updateUserRoleHandler,
 } from "../controllers/admin.controller";
 import { validate } from "../middlewares/validate.middleware";
 import {
@@ -28,6 +29,8 @@ import {
   adminSourceParamSchema,
   adminStatusQuerySchema,
   adminUpdateBodySchema,
+  adminUserRoleSchema,
+  adminUserParamSchema,
 } from "../validators/admin.validator";
 
 const router = Router();
@@ -36,6 +39,7 @@ router.use(requireAuth, requireAdminOrModerator);
 
 router.get("/stats", getAdminStatsHandler);
 router.get("/users", getAdminUsersHandler);
+router.patch("/users/:userId/role", validate(adminUserParamSchema, "params"), validate(adminUserRoleSchema, "body"), updateUserRoleHandler);
 router.get("/sources", getAdminSourcesHandler);
 router.patch("/sources/:id/verify", validate(adminSourceParamSchema, "params"), verifyAdminSourceHandler);
 router.get("/updates", getAdminUpdatesHandler);

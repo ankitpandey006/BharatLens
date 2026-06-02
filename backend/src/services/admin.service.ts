@@ -14,6 +14,7 @@ import {
   unpublishAdminContentById,
   updateAdminContentById,
   verifyAdminSource,
+  updateUserRole,
 } from "../repositories/admin.repository";
 import { AppError } from "../utils/app-error";
 
@@ -80,4 +81,12 @@ export async function verifySourceForAdmin(sourceId: string, adminId: string) {
 
 export async function fetchUpdatesForAdmin() {
   return fetchAdminUpdates();
+}
+
+export async function updateUserRoleInDb(userId: string, newRole: string, adminId: string) {
+  if (!["user", "admin", "moderator"].includes(newRole)) {
+    throw new AppError("Invalid role", 400);
+  }
+
+  return updateUserRole(userId, newRole, adminId);
 }

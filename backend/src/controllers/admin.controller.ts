@@ -16,6 +16,7 @@ import {
   unpublishAdminItem,
   expireAdminItem,
   verifySourceForAdmin,
+  updateUserRoleInDb,
 } from "../services/admin.service";
 import type { AdminItemType, AdminItemUpdates } from "../repositories/admin.repository";
 
@@ -208,4 +209,27 @@ export const verifyAdminSourceHandler = asyncHandler(async (req: Request, res: R
 export const getAdminUpdatesHandler = asyncHandler(async (_req: Request, res: Response) => {
   const updates = await fetchUpdatesForAdmin();
   sendSuccess(res, "Updates fetched successfully", updates);
+});
+
+export const updateUserRoleHandler = asyncHandler(async (req: Request, res: Response) => {
+  const currentUser = req.user;
+
+  if (!currentUser) {
+    return sendError(res, "Authentication required", 401);
+  }
+
+  const { userId } = req.validatedParams as { userId: string };
+  const { role, confirm } = req.validatedBody as { role: string; confirm?: boolean };
+
+  if (userId === currentUser.id && role !== currentUser.role && !confirm) {
+    return sendError(res, "Confirm required for self-demotion", 400);
+  }
+
+  const updated = await updateUserRoleInDb(userId, role, currentUser.id);
+
+  if (!updated) {
+    return sendError(res, "User not found", 404);
+  }
+
+  sendSuccess(res, "User role updated successfully", updated);
 });

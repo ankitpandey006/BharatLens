@@ -39,8 +39,6 @@ export interface AdminStats {
   pending_items: number;
   approved_items: number;
   rejected_items: number;
-  published_items: number;
-  expired_items: number;
   total_saved_items: number;
   total_notifications: number;
 }
@@ -201,7 +199,7 @@ export async function deleteAdminContentById(itemType: AdminItemType, itemId: st
 }
 
 export async function fetchAdminUsers() {
-  const { data, error } = await supabase.from("users").select("id, email, first_name, last_name, role, state, created_at");
+  const { data, error } = await supabase.from("users").select("id, email, full_name, role, created_at");
   if (error) {
     throw new AppError(`Failed to fetch admin users: ${error.message}`, 500);
   }
@@ -251,26 +249,6 @@ async function countContentByVerificationStatus(status: string): Promise<number>
   return counts.reduce((total, count) => total + count, 0);
 }
 
-async function countContentByStatus(status: string): Promise<number> {
-  const counts = await Promise.all(
-    (Object.keys(tableNames) as AdminItemType[]).map(async (itemType) => {
-      const table = getTableName(itemType);
-      const { count, error } = await supabase
-        .from(table)
-        .select("id", { count: "exact" })
-        .eq("status", status);
-
-      if (error) {
-        throw new AppError(`Failed to count ${itemType} ${status} items: ${error.message}`, 500);
-      }
-
-      return count ?? 0;
-    }),
-  );
-
-  return counts.reduce((total, count) => total + count, 0);
-}
-
 export async function fetchAdminStatsSummary(): Promise<AdminStats> {
   const [
     totalUsers,
@@ -281,8 +259,6 @@ export async function fetchAdminStatsSummary(): Promise<AdminStats> {
     pendingItems,
     approvedItems,
     rejectedItems,
-    publishedItems,
-    expiredItems,
     totalSavedItems,
     totalNotifications,
   ] = await Promise.all([
@@ -294,8 +270,6 @@ export async function fetchAdminStatsSummary(): Promise<AdminStats> {
     countContentByVerificationStatus("pending"),
     countContentByVerificationStatus("approved"),
     countContentByVerificationStatus("rejected"),
-    countContentByStatus("published"),
-    countContentByStatus("expired"),
     countRows("saved_items"),
     countRows("notifications"),
   ]);
@@ -309,8 +283,6 @@ export async function fetchAdminStatsSummary(): Promise<AdminStats> {
     pending_items: pendingItems,
     approved_items: approvedItems,
     rejected_items: rejectedItems,
-    published_items: publishedItems,
-    expired_items: expiredItems,
     total_saved_items: totalSavedItems,
     total_notifications: totalNotifications,
   };
@@ -349,4 +321,19 @@ export async function fetchAdminUpdates(): Promise<AdminUpdate[]> {
   }
 
   return (data ?? []) as AdminUpdate[];
+}
+
+export async function updateUserRole(userId: string, newRole: string, adminId: string) {
+  const { data, error } = await supabase
+    .from("users")
+    .update({ role: newRole, updated_by: adminId, updated_at: new Date().toISOString() })
+    .eq("id", userId)
+    .select()
+    .maybeSingle();
+
+  if (error) {
+    throw new AppError(`Failed to update user role: ${error.message}`, 500);
+  }
+
+  return data as unknown;
 }
