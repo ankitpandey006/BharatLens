@@ -31,10 +31,8 @@ export default function AuthLayout({
     );
   }
 
-  if (isAuthenticated) {
-    return null;
-  }
-
+  // If authenticated, let useEffect redirect while still rendering layout
+  // Avoid returning null to prevent redirect from breaking component tree
   return (
     <div className="min-h-screen bg-[#F5F3EE] text-[#111827]">
       <div className="mx-auto grid min-h-screen w-full max-w-6xl items-center gap-10 px-4 py-8 md:grid-cols-[1fr_440px] md:px-8 lg:gap-16">

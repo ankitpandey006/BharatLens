@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import DetailPage from "@/components/details/DetailPage";
-import { getDetailByCategoryAndId } from "@/data/detailContent";
+import { getSchemeById } from "@/lib/api/schemes";
+import { mapSchemeToDetailItem } from "@/lib/utils/detail";
 
 interface SchemeDetailPageProps {
   params: Promise<{ id: string }>;
@@ -8,17 +9,17 @@ interface SchemeDetailPageProps {
 
 export default async function SchemeDetailPage({ params }: SchemeDetailPageProps) {
   const { id } = await params;
-  const detail = getDetailByCategoryAndId("schemes", id);
+  const scheme = await getSchemeById(id);
 
-  if (!detail) {
+  if (!scheme) {
     notFound();
   }
 
   return (
     <DetailPage
-      item={detail.item}
-      relatedTitle={detail.relatedTitle}
-      relatedItems={detail.related}
+      item={mapSchemeToDetailItem(scheme)}
+      relatedTitle="Similar Schemes"
+      relatedItems={[]}
     />
   );
 }

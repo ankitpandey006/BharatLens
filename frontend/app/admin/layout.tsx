@@ -13,16 +13,18 @@ export default function AdminLayout({
 }) {
   const router = useRouter();
   const pathname = usePathname();
-  const { authLoading, session } = useAuth();
+  const { authLoading, isAuthenticated } = useAuth();
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   useEffect(() => {
-    if (authLoading || session) {
+    if (authLoading) {
       return;
     }
 
-    router.replace(`/login?next=${encodeURIComponent(pathname)}`);
-  }, [authLoading, pathname, router, session]);
+    if (!isAuthenticated) {
+      router.replace(`/login?next=${encodeURIComponent(pathname)}`);
+    }
+  }, [authLoading, isAuthenticated, pathname, router]);
 
   useEffect(() => {
     if (!isMobileSidebarOpen) return;
@@ -48,9 +50,8 @@ export default function AdminLayout({
     );
   }
 
-  if (!session) {
-    return null;
-  }
+  // If not authenticated, layout will redirect via useEffect
+  // Still render admin layout to avoid blank page during redirect
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] lg:flex">

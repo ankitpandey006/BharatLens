@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import DetailPage from "@/components/details/DetailPage";
-import { getDetailByCategoryAndId } from "@/data/detailContent";
+import { getExamById } from "@/lib/api/exams";
+import { mapExamToDetailItem } from "@/lib/utils/detail";
 
 interface ExamDetailPageProps {
   params: Promise<{ id: string }>;
@@ -8,17 +9,17 @@ interface ExamDetailPageProps {
 
 export default async function ExamDetailPage({ params }: ExamDetailPageProps) {
   const { id } = await params;
-  const detail = getDetailByCategoryAndId("exams", id);
+  const exam = await getExamById(id);
 
-  if (!detail) {
+  if (!exam) {
     notFound();
   }
 
   return (
     <DetailPage
-      item={detail.item}
-      relatedTitle={detail.relatedTitle}
-      relatedItems={detail.related}
+      item={mapExamToDetailItem(exam)}
+      relatedTitle="Similar Exams"
+      relatedItems={[]}
     />
   );
 }

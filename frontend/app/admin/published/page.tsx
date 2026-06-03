@@ -1,20 +1,14 @@
 "use client";
 
-import { useState } from "react";
-import {
-  getDummyAdminItems,
-  filterAdminItems,
-  sortAdminItems,
-} from "@/lib/dummyAdminData";
+import { useEffect, useState } from "react";
+import { getAdminItemsByStatus } from "@/lib/api/admin";
+import { filterAdminItems, sortAdminItems } from "@/lib/dummyAdminData";
 import FilterBar from "@/components/admin/FilterBar";
 import VerificationTable from "@/components/admin/VerificationTable";
 import VerificationDetailPanel from "@/components/admin/VerificationDetailPanel";
 import type { AdminItem, FilterState } from "@/types/admin";
 
 export default function PublishedPage() {
-  const allPublished = getDummyAdminItems().filter(
-    (item) => item.status === "published"
-  );
   const [selectedItem, setSelectedItem] = useState<AdminItem | null>(null);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [filters, setFilters] = useState<FilterState>({
@@ -26,7 +20,22 @@ export default function PublishedPage() {
     sortBy: "latest",
     sortOrder: "desc",
   });
-  const [items, setItems] = useState<AdminItem[]>(allPublished);
+  const [allPublished, setAllPublished] = useState<AdminItem[]>([]);
+  const [items, setItems] = useState<AdminItem[]>([]);
+
+  useEffect(() => {
+    async function loadPublished() {
+      try {
+        const publishedItems = await getAdminItemsByStatus("published");
+        setAllPublished(publishedItems);
+        setItems(publishedItems);
+      } catch (error) {
+        console.error("Failed to load published admin items:", error);
+      }
+    }
+
+    loadPublished();
+  }, []);
 
   const states = Array.from(new Set(allPublished.map((item) => item.state)));
   const sources = Array.from(

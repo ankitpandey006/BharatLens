@@ -1,18 +1,14 @@
 "use client";
 
-import { useState } from "react";
-import {
-  getDummyAdminItems,
-  filterAdminItems,
-  sortAdminItems,
-} from "@/lib/dummyAdminData";
+import { useEffect, useState } from "react";
+import { getAdminItemsByStatus } from "@/lib/api/admin";
+import { filterAdminItems, sortAdminItems } from "@/lib/dummyAdminData";
 import FilterBar from "@/components/admin/FilterBar";
 import VerificationTable from "@/components/admin/VerificationTable";
 import VerificationDetailPanel from "@/components/admin/VerificationDetailPanel";
 import type { AdminItem, FilterState } from "@/types/admin";
 
 export default function VerificationPage() {
-  const allItems = getDummyAdminItems();
   const [selectedItem, setSelectedItem] = useState<AdminItem | null>(null);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [filters, setFilters] = useState<FilterState>({
@@ -24,7 +20,22 @@ export default function VerificationPage() {
     sortBy: "latest",
     sortOrder: "desc",
   });
-  const [items, setItems] = useState<AdminItem[]>(allItems);
+  const [allItems, setAllItems] = useState<AdminItem[]>([]);
+  const [items, setItems] = useState<AdminItem[]>([]);
+
+  useEffect(() => {
+    async function loadItems() {
+      try {
+        const response = await getAdminItemsByStatus("pending");
+        setAllItems(response);
+        setItems(response);
+      } catch (error) {
+        console.error("Failed to load verification items:", error);
+      }
+    }
+
+    loadItems();
+  }, []);
 
   // Extract unique states and sources
   const states = Array.from(new Set(allItems.map((item) => item.state)));

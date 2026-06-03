@@ -90,6 +90,7 @@ export const rejectAdminItemHandler = asyncHandler(async (req: Request, res: Res
     return sendError(res, "Authentication required", 401);
   }
 
+  // rejection_reason is guaranteed to exist due to our validator transform
   const item = await rejectAdminItem(itemType, itemId, user.id, rejection_reason);
 
   if (!item) {

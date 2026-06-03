@@ -1,3 +1,6 @@
+"use client";
+
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   Bell,
@@ -21,87 +24,118 @@ import {
   getSchemes,
 } from "@/lib/services/content";
 
-const stats = [
-  {
-    label: "Eligible Schemes",
-    value: String(getSchemes().length),
-    icon: FileText,
-    href: "/schemes",
-  },
-  {
-    label: "Scholarships",
-    value: String(getScholarships().length),
-    icon: GraduationCap,
-    href: "/scholarships",
-  },
-  {
-    label: "Jobs Matched",
-    value: String(getJobs().length),
-    icon: Briefcase,
-    href: "/jobs",
-  },
-  {
-    label: "Exam Alerts",
-    value: String(getExams().length),
-    icon: CalendarDays,
-    href: "/exams",
-  },
-];
-
-const quickActions = [
-  {
-    title: "Ask AI",
-    text: "Get instant help",
-    href: "/chatbot",
-    icon: Bot,
-  },
-  {
-    title: "Update Profile",
-    text: "Improve matches",
-    href: "/profile/setup",
-    icon: UserRound,
-  },
-  {
-    title: "Saved Items",
-    text: "Review later",
-    href: "/saved",
-    icon: Bookmark,
-  },
-];
-
-const recommendations = [
-  {
-    title: "Student scholarship matching your profile",
-    meta: "Education support · Deadline in 18 days",
-    match: "92%",
-    tag: "Scholarship",
-  },
-  {
-    title: "State skill development scheme",
-    meta: "Training benefit · Documents required",
-    match: "86%",
-    tag: "Scheme",
-  },
-  {
-    title: "Public sector exam notification",
-    meta: "Graduate eligible · Application window open",
-    match: "78%",
-    tag: "Exam",
-  },
-];
-
-const notifications = getNotifications()
-  .slice(0, 3)
-  .map((item) => item.message);
-
-const updates = [
-  "New scholarship found for students in your state",
-  "Government job notification added today",
-  "Exam alert updated with new application date",
-];
-
 export default function DashboardPage() {
-  const savedCount = getSavedItems().length;
+  const [schemesCount, setSchemesCount] = useState(0);
+  const [scholarshipsCount, setScholarshipsCount] = useState(0);
+  const [jobsCount, setJobsCount] = useState(0);
+  const [examsCount, setExamsCount] = useState(0);
+  const [notificationsData, setNotificationsData] = useState<any[]>([]);
+  const [savedCount, setSavedCount] = useState(0);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadDashboardData() {
+      try {
+        setLoading(true);
+        const [schemes, scholarships, jobs, exams, notifications, saved] = await Promise.all([
+          getSchemes(),
+          getScholarships(),
+          getJobs(),
+          getExams(),
+          getNotifications(),
+          getSavedItems(),
+        ]);
+
+        setSchemesCount(schemes?.length || 0);
+        setScholarshipsCount(scholarships?.length || 0);
+        setJobsCount(jobs?.length || 0);
+        setExamsCount(exams?.length || 0);
+        setNotificationsData((notifications || []).slice(0, 3).map((n: any) => n.message || String(n)));
+        setSavedCount(saved?.length || 0);
+      } catch (error) {
+        console.error("Failed to load dashboard data:", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadDashboardData();
+  }, []);
+
+  const stats = [
+    {
+      label: "Eligible Schemes",
+      value: String(schemesCount),
+      icon: FileText,
+      href: "/schemes",
+    },
+    {
+      label: "Scholarships",
+      value: String(scholarshipsCount),
+      icon: GraduationCap,
+      href: "/scholarships",
+    },
+    {
+      label: "Jobs Matched",
+      value: String(jobsCount),
+      icon: Briefcase,
+      href: "/jobs",
+    },
+    {
+      label: "Exam Alerts",
+      value: String(examsCount),
+      icon: CalendarDays,
+      href: "/exams",
+    },
+  ];
+
+  const quickActions = [
+    {
+      title: "Ask AI",
+      text: "Get instant help",
+      href: "/chatbot",
+      icon: Bot,
+    },
+    {
+      title: "Update Profile",
+      text: "Improve matches",
+      href: "/profile/setup",
+      icon: UserRound,
+    },
+    {
+      title: "Saved Items",
+      text: "Review later",
+      href: "/saved",
+      icon: Bookmark,
+    },
+  ];
+
+  const recommendations = [
+    {
+      title: "Student scholarship matching your profile",
+      meta: "Education support · Deadline in 18 days",
+      match: "92%",
+      tag: "Scholarship",
+    },
+    {
+      title: "State skill development scheme",
+      meta: "Training benefit · Documents required",
+      match: "86%",
+      tag: "Scheme",
+    },
+    {
+      title: "Public sector exam notification",
+      meta: "Graduate eligible · Application window open",
+      match: "78%",
+      tag: "Exam",
+    },
+  ];
+
+  const updates = [
+    "New scholarship found for students in your state",
+    "Government job notification added today",
+    "Exam alert updated with new application date",
+  ];
 
   return (
     <div className="min-h-screen bg-[#F5F3EE]">
@@ -316,7 +350,7 @@ export default function DashboardPage() {
               </div>
 
               <div className="mt-4 grid gap-3">
-                {notifications.map((item) => (
+                {notificationsData.map((item) => (
                   <p
                     key={item}
                     className="rounded-2xl bg-[#F5F3EE] p-3 text-sm leading-5 text-[#111827]/70"

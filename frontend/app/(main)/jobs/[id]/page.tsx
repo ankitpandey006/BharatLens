@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import DetailPage from "@/components/details/DetailPage";
-import { getDetailByCategoryAndId } from "@/data/detailContent";
+import { getJobById } from "@/lib/api/jobs";
+import { mapJobToDetailItem } from "@/lib/utils/detail";
 
 interface JobDetailPageProps {
   params: Promise<{ id: string }>;
@@ -8,17 +9,17 @@ interface JobDetailPageProps {
 
 export default async function JobDetailPage({ params }: JobDetailPageProps) {
   const { id } = await params;
-  const detail = getDetailByCategoryAndId("jobs", id);
+  const job = await getJobById(id);
 
-  if (!detail) {
+  if (!job) {
     notFound();
   }
 
   return (
     <DetailPage
-      item={detail.item}
-      relatedTitle={detail.relatedTitle}
-      relatedItems={detail.related}
+      item={mapJobToDetailItem(job)}
+      relatedTitle="Similar Jobs"
+      relatedItems={[]}
     />
   );
 }

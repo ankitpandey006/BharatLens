@@ -22,6 +22,7 @@ export interface SchemeItem {
   status: string;
   state?: string;
   search_text?: string;
+  verification_status?: string;
   created_at?: string;
   updated_at?: string;
 }

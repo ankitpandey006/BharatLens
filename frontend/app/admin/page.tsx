@@ -1,29 +1,52 @@
 "use client";
 
-import { getDummyAdminItems, getDummyAdminStats } from "@/lib/dummyAdminData";
+import { useEffect, useState } from "react";
 import AdminStatCard from "@/components/admin/AdminStatCard";
+import { getAdminStats } from "@/lib/api/admin";
+import type { AdminStats } from "@/types/admin";
 
 export default function AdminDashboard() {
-  const stats = getDummyAdminStats();
-  const allItems = getDummyAdminItems();
+  const [stats, setStats] = useState<AdminStats | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  // Calculate breakdowns
+  useEffect(() => {
+    async function loadStats() {
+      try {
+        const response = await getAdminStats();
+        setStats(response);
+      } catch (error) {
+        console.error("Failed to load admin stats:", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadStats();
+  }, []);
+
+  const summary = stats ?? {
+    totalAiItems: 0,
+    pendingVerification: 0,
+    approved: 0,
+    rejected: 0,
+    published: 0,
+    highPriorityAlerts: 0,
+  };
+
   const typeBreakdown = {
-    scheme: allItems.filter(i => i.type === "scheme").length,
-    scholarship: allItems.filter(i => i.type === "scholarship").length,
-    job: allItems.filter(i => i.type === "job").length,
-    exam: allItems.filter(i => i.type === "exam").length,
-    update: allItems.filter(i => i.type === "update").length,
+    scheme: 0,
+    scholarship: 0,
+    job: 0,
+    exam: 0,
+    update: 0,
   };
 
   const categoryBreakdown = {
-    sc_st: allItems.filter(i => i.category === "sc" || i.category === "st").length,
-    obc: allItems.filter(i => i.category === "obc").length,
-    women: allItems.filter(i => i.category === "women").length,
-    general: allItems.filter(i => i.category === "general").length,
-    other: allItems.filter(i => 
-      !["sc", "st", "obc", "women", "general"].includes(i.category)
-    ).length,
+    sc_st: 0,
+    obc: 0,
+    women: 0,
+    general: 0,
+    other: 0,
   };
 
   return (
@@ -39,37 +62,37 @@ export default function AdminDashboard() {
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         <AdminStatCard
           label="Total AI Items"
-          value={stats.totalAiItems}
+          value={loading ? "..." : summary.totalAiItems}
           color="blue"
           icon="Database"
         />
         <AdminStatCard
           label="Pending Verification"
-          value={stats.pendingVerification}
+          value={loading ? "..." : summary.pendingVerification}
           color="yellow"
           icon="Clock"
         />
         <AdminStatCard
           label="Approved"
-          value={stats.approved}
+          value={loading ? "..." : summary.approved}
           color="blue"
           icon="CheckCircle"
         />
         <AdminStatCard
           label="Rejected"
-          value={stats.rejected}
+          value={loading ? "..." : summary.rejected}
           color="red"
           icon="XCircle"
         />
         <AdminStatCard
           label="Published"
-          value={stats.published}
+          value={loading ? "..." : summary.published}
           color="green"
           icon="Send"
         />
         <AdminStatCard
           label="High Priority Alerts"
-          value={stats.highPriorityAlerts}
+          value={loading ? "..." : summary.highPriorityAlerts}
           color="purple"
           icon="AlertCircle"
           trend={-5}

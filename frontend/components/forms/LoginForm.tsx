@@ -1,77 +1,28 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
-import {
-  ensureSafeBrowserOrigin,
-  getAuthCallbackUrl,
-  safeRedirectPath,
-} from "@/lib/auth/urls";
-import { useAuth } from "@/hooks/useAuth";
-
-const OAUTH_ERROR_MESSAGES: Record<string, string> = {
-  missing_oauth_code: "Sign-in was cancelled or incomplete. Please try again.",
-  oauth_exchange_failed: "Could not complete Google sign-in. Please try again.",
-  bad_oauth_state:
-    "Sign-in session expired or used a different address. Open http://localhost:3000 (not 0.0.0.0) and try again.",
-  supabase_not_configured: "Authentication is not configured. Contact support.",
-};
+import { login } from "@/lib/api/auth";
+import { getAuthToken } from "@/lib/auth/storage";
+import { safeRedirectPath } from "@/lib/auth/urls";
 
 export default function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const supabase = useMemo(() => createClient(), []);
-  const { isAuthenticated, authLoading } = useAuth();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [formMessage, setFormMessage] = useState("");
-  const [emailLoading, setEmailLoading] = useState(false);
-  const [googleLoading, setGoogleLoading] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const oauthErrorCode = searchParams.get("error");
-  const oauthErrorMessage =
-    oauthErrorCode && OAUTH_ERROR_MESSAGES[oauthErrorCode]
-      ? OAUTH_ERROR_MESSAGES[oauthErrorCode]
-      : "";
-  const message = formMessage || oauthErrorMessage;
-
-  const isSubmitting = emailLoading || googleLoading;
-
+  // If already logged in, preserve next redirect and avoid reloading login page.
   useEffect(() => {
-    ensureSafeBrowserOrigin();
-  }, []);
-
-  useEffect(() => {
-    if (!authLoading && isAuthenticated) {
+    if (getAuthToken()) {
       const next = safeRedirectPath(searchParams.get("next"));
       router.replace(next ?? "/dashboard");
     }
-  }, [authLoading, isAuthenticated, router, searchParams]);
-
-  const handleGoogleLogin = async () => {
-    ensureSafeBrowserOrigin();
-
-    setGoogleLoading(true);
-    setFormMessage("");
-
-    const redirectTo = getAuthCallbackUrl();
-
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo,
-        skipBrowserRedirect: false,
-      },
-    });
-
-    if (error) {
-      setFormMessage(error.message);
-      setGoogleLoading(false);
-    }
-  };
+  }, [router, searchParams]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -83,25 +34,25 @@ export default function LoginForm() {
       return;
     }
 
-    setEmailLoading(true);
+    setLoading(true);
     setFormMessage("");
 
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email: cleanEmail,
-      password,
-    });
+    try {
+      await login({
+        email: cleanEmail,
+        password,
+      });
 
-    if (error) {
-      setFormMessage(error.message);
-      setEmailLoading(false);
-      return;
+      window.dispatchEvent(new Event("authChange"));
+      const next = safeRedirectPath(searchParams.get("next")) ?? "/dashboard";
+      await router.replace(next);
+      router.refresh();
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Login failed. Please try again.";
+      setFormMessage(message);
+      setLoading(false);
     }
-
-    const isProfileComplete = Boolean(
-      data.user?.user_metadata?.profile_completed,
-    );
-
-    router.replace(isProfileComplete ? "/dashboard" : "/profile/setup");
   };
 
   return (
@@ -116,21 +67,6 @@ export default function LoginForm() {
         </p>
       </div>
 
-      <button
-        type="button"
-        onClick={handleGoogleLogin}
-        disabled={isSubmitting || authLoading}
-        className="mb-4 min-h-11 w-full rounded-2xl border border-[#E5E7EB] bg-white py-3 text-sm font-semibold text-[#111827] transition hover:border-[#1A3C6E] hover:bg-[#F5F3EE] disabled:cursor-not-allowed disabled:bg-[#F5F3EE] disabled:text-[#9CA3AF]"
-      >
-        {googleLoading ? "Redirecting..." : "Continue with Google"}
-      </button>
-
-      <div className="mb-4 flex items-center gap-3">
-        <div className="h-px flex-1 bg-[#E5E7EB]" />
-        <span className="text-xs font-medium text-[#111827]/45">OR</span>
-        <div className="h-px flex-1 bg-[#E5E7EB]" />
-      </div>
-
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label htmlFor="email" className="mb-1.5 block text-sm font-medium">
@@ -143,7 +79,7 @@ export default function LoginForm() {
             className="min-h-11 w-full rounded-2xl border border-[#E5E7EB] px-4 py-3 text-sm outline-none transition focus:border-[#3B82F6] focus:ring-2 focus:ring-[#3B82F6]/20"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            disabled={isSubmitting || authLoading}
+            disabled={loading}
             autoComplete="email"
             required
           />
@@ -163,7 +99,7 @@ export default function LoginForm() {
             className="min-h-11 w-full rounded-2xl border border-[#E5E7EB] px-4 py-3 text-sm outline-none transition focus:border-[#3B82F6] focus:ring-2 focus:ring-[#3B82F6]/20"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            disabled={isSubmitting || authLoading}
+            disabled={loading}
             autoComplete="current-password"
             required
           />
@@ -179,18 +115,18 @@ export default function LoginForm() {
           </Link>
         </div>
 
-        {message ? (
-          <p className="rounded-2xl bg-[#F5F3EE] px-3 py-2 text-sm text-[#1A3C6E]">
-            {message}
+        {formMessage ? (
+          <p className="rounded-2xl bg-red-50 px-3 py-2 text-sm text-red-600">
+            {formMessage}
           </p>
         ) : null}
 
         <button
           type="submit"
-          disabled={isSubmitting || authLoading}
+          disabled={loading}
           className="min-h-11 w-full rounded-2xl bg-[#1A3C6E] py-3 font-semibold text-white transition hover:bg-[#3B82F6] disabled:cursor-not-allowed disabled:bg-[#9BB6E5]"
         >
-          {emailLoading ? "Logging in..." : "Login"}
+          {loading ? "Logging in..." : "Login"}
         </button>
       </form>
 

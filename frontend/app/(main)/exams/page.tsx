@@ -1,14 +1,35 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import ExamCard from "@/components/cards/ExamCard";
 import ListingSearchFilter from "@/components/filters/ListingSearchFilter";
-import { getExams } from "@/lib/services/content";
+import * as examsApi from "@/lib/api/exams";
 
 export default function ExamsPage() {
-  const exams = useMemo(() => getExams(), []);
+  const [exams, setExams] = useState<examsApi.Exam[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("All");
+
+  // Fetch exams on mount
+  useEffect(() => {
+    async function fetchExams() {
+      try {
+        setLoading(true);
+        setError(null);
+        const data = await examsApi.getExams();
+        setExams(data);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to fetch exams");
+        setExams([]);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchExams();
+  }, []);
 
   const categories = useMemo(
     () => ["All", ...new Set(exams.map((exam) => exam.category))],
@@ -18,7 +39,7 @@ export default function ExamsPage() {
   const filteredExams = useMemo(
     () =>
       exams.filter((exam) => {
-        const matchesSearch = `${exam.title} ${exam.description} ${exam.conductingBody}`
+        const matchesSearch = `${exam.title} ${exam.description} ${exam.examBody}`
           .toLowerCase()
           .includes(search.toLowerCase());
         const matchesCategory = category === "All" || exam.category === category;
@@ -39,30 +60,51 @@ export default function ExamsPage() {
           </p>
         </div>
 
-        <div className="mt-6">
-          <ListingSearchFilter
-            searchValue={search}
-            onSearchChange={setSearch}
-            searchPlaceholder="Search exams by title, description, or conducting body"
-            selectedFilter={category}
-            onFilterChange={setCategory}
-            filterLabel="Exam category"
-            filterOptions={categories}
-            resultCount={filteredExams.length}
-          />
-        </div>
-
-        {filteredExams.length === 0 ? (
-          <div className="mt-8 rounded-2xl border border-[#E5E7EB] bg-white p-8 text-center shadow-md">
-            <p className="text-lg font-semibold text-[#1A3C6E]">No exams found</p>
-            <p className="mt-1 text-sm text-[#111827]/70">Try changing your search or category filter.</p>
+        {error && (
+          <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 p-4">
+            <p className="text-sm text-red-800">
+              <strong>Error:</strong> {error}
+            </p>
           </div>
-        ) : (
+        )}
+
+        {loading ? (
           <div className="mt-8 grid gap-5 xl:grid-cols-2">
-            {filteredExams.map((exam) => (
-              <ExamCard key={exam.id} exam={exam} />
+            {[...Array(4)].map((_, i) => (
+              <div
+                key={i}
+                className="h-64 animate-pulse rounded-2xl bg-gray-200"
+              />
             ))}
           </div>
+        ) : (
+          <>
+            <div className="mt-6">
+              <ListingSearchFilter
+                searchValue={search}
+                onSearchChange={setSearch}
+                searchPlaceholder="Search exams by title, description, or conducting body"
+                selectedFilter={category}
+                onFilterChange={setCategory}
+                filterLabel="Exam category"
+                filterOptions={categories}
+                resultCount={filteredExams.length}
+              />
+            </div>
+
+            {filteredExams.length === 0 ? (
+              <div className="mt-8 rounded-2xl border border-[#E5E7EB] bg-white p-8 text-center shadow-md">
+                <p className="text-lg font-semibold text-[#1A3C6E]">No exams found</p>
+                <p className="mt-1 text-sm text-[#111827]/70">Try changing your search or category filter.</p>
+              </div>
+            ) : (
+              <div className="mt-8 grid gap-5 xl:grid-cols-2">
+                {filteredExams.map((exam: any) => (
+                  <ExamCard key={exam.id} exam={exam} />
+                ))}
+              </div>
+            )}
+          </>
         )}
       </div>
     </section>

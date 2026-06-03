@@ -17,8 +17,50 @@ const profileFields = {
   income_range: z.string().trim().min(1).optional(),
 };
 
-export const profileUpdateSchema = z.object(profileFields).partial();
-export const profileCreateSchema = z.object(profileFields).partial();
+// Preprocess function to normalize input
+const normalizeProfileInput = (data: unknown) => {
+  if (typeof data !== "object" || data === null) return data;
+
+  const obj = data as Record<string, unknown>;
+  const normalized: Record<string, unknown> = {};
+
+  for (const [key, value] of Object.entries(obj)) {
+    // Handle education -> education_level alias
+    if (key === "education") {
+      normalized.education_level = value;
+    }
+    // Handle profileCompleted -> profile_completed
+    else if (key === "profileCompleted") {
+      normalized.profile_completed = value;
+    }
+    // Preserve other keys
+    else {
+      normalized[key] = value;
+    }
+  }
+
+  return normalized;
+};
+
+const profilePartialFields = Object.entries(profileFields).reduce(
+  (acc, [key, schema]) => {
+    acc[key] = schema;
+    return acc;
+  },
+  {} as Record<string, z.ZodTypeAny>
+);
+
+export const profileUpdateSchema = z
+  .preprocess(
+    normalizeProfileInput,
+    z.object(profilePartialFields).partial()
+  );
+
+export const profileCreateSchema = z
+  .preprocess(
+    normalizeProfileInput,
+    z.object(profilePartialFields).partial()
+  );
 
 export const profileIdParamSchema = z.object({
   id: z.string().min(1, "Profile ID is required"),

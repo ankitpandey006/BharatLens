@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { requireAuth } from "../middlewares/auth.middleware";
 import { requireAdminOrModerator } from "../middlewares/role.middleware";
+import { injectItemType } from "../middlewares/inject-item-type.middleware";
 import {
   approveAdminItemHandler,
   deleteAdminItemHandler,
@@ -95,5 +96,62 @@ router.patch("/:itemType/:id/publish", validate(adminItemParamSchema, "params"),
 router.patch("/:itemType/:id/unpublish", validate(adminItemParamSchema, "params"), unpublishAdminItemHandler);
 router.patch("/:itemType/:id", validate(adminItemParamSchema, "params"), validate(adminUpdateBodySchema, "body"), updateAdminItemHandler);
 router.delete("/:itemType/:id", validate(adminItemParamSchema, "params"), deleteAdminItemHandler);
+
+// Plural routes for schemes, scholarships, jobs, exams
+router.get("/schemes/:id", injectItemType(), validate(adminItemParamSchema, "params"), getAdminItemHandler);
+router.patch("/schemes/:id/approve", injectItemType(), validate(adminItemParamSchema, "params"), approveAdminItemHandler);
+router.patch(
+  "/schemes/:id/reject",
+  injectItemType(),
+  validate(adminItemParamSchema, "params"),
+  validate(adminReviewBodySchema, "body"),
+  rejectAdminItemHandler,
+);
+router.patch("/schemes/:id/publish", injectItemType(), validate(adminItemParamSchema, "params"), publishAdminItemHandler);
+router.patch("/schemes/:id/unpublish", injectItemType(), validate(adminItemParamSchema, "params"), unpublishAdminItemHandler);
+router.patch("/schemes/:id", injectItemType(), validate(adminItemParamSchema, "params"), validate(adminUpdateBodySchema, "body"), updateAdminItemHandler);
+router.delete("/schemes/:id", injectItemType(), validate(adminItemParamSchema, "params"), deleteAdminItemHandler);
+
+router.get("/scholarships/:id", injectItemType(), validate(adminItemParamSchema, "params"), getAdminItemHandler);
+router.patch("/scholarships/:id/approve", injectItemType(), validate(adminItemParamSchema, "params"), approveAdminItemHandler);
+router.patch(
+  "/scholarships/:id/reject",
+  injectItemType(),
+  validate(adminItemParamSchema, "params"),
+  validate(adminReviewBodySchema, "body"),
+  rejectAdminItemHandler,
+);
+router.patch("/scholarships/:id/publish", injectItemType(), validate(adminItemParamSchema, "params"), publishAdminItemHandler);
+router.patch("/scholarships/:id/unpublish", injectItemType(), validate(adminItemParamSchema, "params"), unpublishAdminItemHandler);
+router.patch("/scholarships/:id", injectItemType(), validate(adminItemParamSchema, "params"), validate(adminUpdateBodySchema, "body"), updateAdminItemHandler);
+router.delete("/scholarships/:id", injectItemType(), validate(adminItemParamSchema, "params"), deleteAdminItemHandler);
+
+router.get("/jobs/:id", injectItemType(), validate(adminItemParamSchema, "params"), getAdminItemHandler);
+router.patch("/jobs/:id/approve", injectItemType(), validate(adminItemParamSchema, "params"), approveAdminItemHandler);
+router.patch(
+  "/jobs/:id/reject",
+  injectItemType(),
+  validate(adminItemParamSchema, "params"),
+  validate(adminReviewBodySchema, "body"),
+  rejectAdminItemHandler,
+);
+router.patch("/jobs/:id/publish", injectItemType(), validate(adminItemParamSchema, "params"), publishAdminItemHandler);
+router.patch("/jobs/:id/unpublish", injectItemType(), validate(adminItemParamSchema, "params"), unpublishAdminItemHandler);
+router.patch("/jobs/:id", injectItemType(), validate(adminItemParamSchema, "params"), validate(adminUpdateBodySchema, "body"), updateAdminItemHandler);
+router.delete("/jobs/:id", injectItemType(), validate(adminItemParamSchema, "params"), deleteAdminItemHandler);
+
+router.get("/exams/:id", injectItemType(), validate(adminItemParamSchema, "params"), getAdminItemHandler);
+router.patch("/exams/:id/approve", injectItemType(), validate(adminItemParamSchema, "params"), approveAdminItemHandler);
+router.patch(
+  "/exams/:id/reject",
+  injectItemType(),
+  validate(adminItemParamSchema, "params"),
+  validate(adminReviewBodySchema, "body"),
+  rejectAdminItemHandler,
+);
+router.patch("/exams/:id/publish", injectItemType(), validate(adminItemParamSchema, "params"), publishAdminItemHandler);
+router.patch("/exams/:id/unpublish", injectItemType(), validate(adminItemParamSchema, "params"), unpublishAdminItemHandler);
+router.patch("/exams/:id", injectItemType(), validate(adminItemParamSchema, "params"), validate(adminUpdateBodySchema, "body"), updateAdminItemHandler);
+router.delete("/exams/:id", injectItemType(), validate(adminItemParamSchema, "params"), deleteAdminItemHandler);
 
 export default router;

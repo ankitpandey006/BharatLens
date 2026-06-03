@@ -4,8 +4,10 @@ import { sendSuccess, sendError } from "../utils/response-helper";
 import {
   generateRecommendations,
   getRecommendations,
+  getRecommendationsByItemType,
   viewRecommendation,
 } from "../services/recommendation.service";
+import type { RecommendationEntityType } from "../repositories/recommendation.repository";
 
 export const listRecommendationsHandler = asyncHandler(async (req: Request, res: Response) => {
   const user = req.user;
@@ -17,6 +19,26 @@ export const listRecommendationsHandler = asyncHandler(async (req: Request, res:
   const query = req.validatedQuery as { page?: number; limit?: number };
   const result = await getRecommendations(user.id, query.page ?? 1, query.limit ?? 20);
   sendSuccess(res, "Recommendations fetched successfully", result);
+});
+
+export const getRecommendationsByTypeHandler = asyncHandler(async (req: Request, res: Response) => {
+  const user = req.user;
+
+  if (!user) {
+    return sendError(res, "Authentication required", 401);
+  }
+
+  const { itemType } = req.validatedParams as { itemType: string };
+  const query = req.validatedQuery as { page?: number; limit?: number };
+
+  const result = await getRecommendationsByItemType(
+    user.id,
+    itemType as RecommendationEntityType,
+    query.page ?? 1,
+    query.limit ?? 20,
+  );
+
+  sendSuccess(res, `Recommendations of type ${itemType} fetched successfully`, result);
 });
 
 export const generateRecommendationsHandler = asyncHandler(async (req: Request, res: Response) => {
@@ -35,6 +57,7 @@ export const generateRecommendationsHandler = asyncHandler(async (req: Request, 
     occupation: currentProfile.occupation,
     user_type: currentProfile.user_type,
     income_range: currentProfile.income_range,
+    annual_income: currentProfile.annual_income,
     dob: currentProfile.dob,
   });
 

@@ -1,20 +1,14 @@
 "use client";
 
-import { useState } from "react";
-import {
-  getDummyAdminItems,
-  filterAdminItems,
-  sortAdminItems,
-} from "@/lib/dummyAdminData";
+import { useEffect, useState } from "react";
+import { getAdminItemsByStatus } from "@/lib/api/admin";
+import { filterAdminItems, sortAdminItems } from "@/lib/dummyAdminData";
 import FilterBar from "@/components/admin/FilterBar";
 import VerificationTable from "@/components/admin/VerificationTable";
 import VerificationDetailPanel from "@/components/admin/VerificationDetailPanel";
 import type { AdminItem, FilterState } from "@/types/admin";
 
 export default function ApprovedPage() {
-  const allApproved = getDummyAdminItems().filter(
-    (item) => item.status === "approved" || item.status === "published"
-  );
   const [selectedItem, setSelectedItem] = useState<AdminItem | null>(null);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [filters, setFilters] = useState<FilterState>({
@@ -26,12 +20,28 @@ export default function ApprovedPage() {
     sortBy: "latest",
     sortOrder: "desc",
   });
-  const [items, setItems] = useState<AdminItem[]>(allApproved);
+  const [allApproved, setAllApproved] = useState<AdminItem[]>([]);
+  const [items, setItems] = useState<AdminItem[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadApproved() {
+      try {
+        const approvedItems = await getAdminItemsByStatus("approved");
+        setAllApproved(approvedItems);
+        setItems(approvedItems);
+      } catch (error) {
+        console.error("Failed to load approved items:", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadApproved();
+  }, []);
 
   const states = Array.from(new Set(allApproved.map((item) => item.state)));
-  const sources = Array.from(
-    new Set(allApproved.map((item) => item.sourceName))
-  );
+  const sources = Array.from(new Set(allApproved.map((item) => item.sourceName)));
 
   const handleFilterChange = (newFilters: Partial<FilterState>) => {
     const updatedFilters = { ...filters, ...newFilters };

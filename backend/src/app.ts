@@ -16,6 +16,8 @@ import {
   notificationsRoutes,
   savedRoutes,
   savedItemsRoutes,
+  collectorRoutes,
+  pdfRoutes,
   docsRoutes,
   testRoutes,
 } from "./routes";
@@ -23,6 +25,7 @@ import { env } from "./config/env";
 import { notFoundHandler } from "./middlewares/not-found.middleware";
 import { errorHandler } from "./middlewares/error.middleware";
 import { sendSuccess } from "./utils/response-helper";
+import { initDailyCollectorJob } from "./jobs/daily-collector.job";
 
 const app = express();
 
@@ -30,7 +33,7 @@ app.use(helmet());
 
 app.use(
   cors({
-    origin: env.FRONTEND_URL,
+    origin: [env.FRONTEND_URL, "http://localhost:3001"],
     credentials: true,
   })
 );
@@ -62,12 +65,16 @@ app.use("/api/profile", profileRoutes);
 app.use("/api/notifications", notificationsRoutes);
 app.use("/api/saved", savedRoutes);
 app.use("/api/saved-items", savedItemsRoutes);
+app.use("/api/collectors", collectorRoutes);
+app.use("/api/pdf", pdfRoutes);
 app.use("/api/test-db", testRoutes);
 app.use("/api/schemes", schemeRoutes);
 app.use("/api/scholarships", scholarshipRoutes);
 app.use("/api/jobs", jobRoutes);
 app.use("/api/exams", examRoutes);
 app.use("/api/admin", adminRoutes);
+
+initDailyCollectorJob();
 
 app.use(notFoundHandler);
 app.use(errorHandler);

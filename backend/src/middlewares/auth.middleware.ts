@@ -45,7 +45,7 @@ export async function requireAuth(req: Request, _res: Response, next: NextFuncti
 
     const { data: profileRecord, error: profileError } = await supabase
       .from("user_profiles")
-      .select("state, category, gender, education_level, occupation, user_type, income_range, dob")
+      .select("state, category, gender, education_level, occupation, user_type, income_range, annual_income, dob")
       .eq("user_id", userId)
       .maybeSingle();
 
@@ -67,7 +67,7 @@ export async function requireAuth(req: Request, _res: Response, next: NextFuncti
       occupation: (profileRecord?.occupation as string | null | undefined) ?? null,
       user_type: (profileRecord?.user_type as string | null | undefined) ?? null,
       income_range: (profileRecord?.income_range as string | null | undefined) ?? null,
-      annual_income: null,
+      annual_income: (profileRecord?.annual_income as number | null | undefined) ?? null,
       preferred_language: null,
       dob: (profileRecord?.dob as string | null | undefined) ?? null,
     };

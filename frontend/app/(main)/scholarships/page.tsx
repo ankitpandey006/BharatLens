@@ -1,14 +1,35 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import ScholarshipCard from "@/components/cards/ScholarshipCard";
 import ListingSearchFilter from "@/components/filters/ListingSearchFilter";
-import { getScholarships } from "@/lib/services/content";
+import * as scholarshipsApi from "@/lib/api/scholarships";
 
 export default function ScholarshipsPage() {
-  const scholarships = useMemo(() => getScholarships(), []);
+  const [scholarships, setScholarships] = useState<scholarshipsApi.Scholarship[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("All");
+
+  // Fetch scholarships on mount
+  useEffect(() => {
+    async function fetchScholarships() {
+      try {
+        setLoading(true);
+        setError(null);
+        const data = await scholarshipsApi.getScholarships();
+        setScholarships(data);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to fetch scholarships");
+        setScholarships([]);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchScholarships();
+  }, []);
 
   const categories = useMemo(
     () => ["All", ...new Set(scholarships.map((scholarship) => scholarship.category))],
@@ -39,30 +60,51 @@ export default function ScholarshipsPage() {
           </p>
         </div>
 
-        <div className="mt-6">
-          <ListingSearchFilter
-            searchValue={search}
-            onSearchChange={setSearch}
-            searchPlaceholder="Search scholarships by title, details, or eligibility"
-            selectedFilter={category}
-            onFilterChange={setCategory}
-            filterLabel="Scholarship category"
-            filterOptions={categories}
-            resultCount={filteredScholarships.length}
-          />
-        </div>
-
-        {filteredScholarships.length === 0 ? (
-          <div className="mt-8 rounded-2xl border border-[#E5E7EB] bg-white p-8 text-center shadow-md">
-            <p className="text-lg font-semibold text-[#1A3C6E]">No scholarships found</p>
-            <p className="mt-1 text-sm text-[#111827]/70">Try changing your search or category filter.</p>
+        {error && (
+          <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 p-4">
+            <p className="text-sm text-red-800">
+              <strong>Error:</strong> {error}
+            </p>
           </div>
-        ) : (
+        )}
+
+        {loading ? (
           <div className="mt-8 grid gap-5 xl:grid-cols-2">
-            {filteredScholarships.map((scholarship) => (
-              <ScholarshipCard key={scholarship.id} scholarship={scholarship} />
+            {[...Array(4)].map((_, i) => (
+              <div
+                key={i}
+                className="h-64 animate-pulse rounded-2xl bg-gray-200"
+              />
             ))}
           </div>
+        ) : (
+          <>
+            <div className="mt-6">
+              <ListingSearchFilter
+                searchValue={search}
+                onSearchChange={setSearch}
+                searchPlaceholder="Search scholarships by title, details, or eligibility"
+                selectedFilter={category}
+                onFilterChange={setCategory}
+                filterLabel="Scholarship category"
+                filterOptions={categories}
+                resultCount={filteredScholarships.length}
+              />
+            </div>
+
+            {filteredScholarships.length === 0 ? (
+              <div className="mt-8 rounded-2xl border border-[#E5E7EB] bg-white p-8 text-center shadow-md">
+                <p className="text-lg font-semibold text-[#1A3C6E]">No scholarships found</p>
+                <p className="mt-1 text-sm text-[#111827]/70">Try changing your search or category filter.</p>
+              </div>
+            ) : (
+              <div className="mt-8 grid gap-5 xl:grid-cols-2">
+                {filteredScholarships.map((scholarship: any) => (
+                  <ScholarshipCard key={scholarship.id} scholarship={scholarship} />
+                ))}
+              </div>
+            )}
+          </>
         )}
       </div>
     </section>

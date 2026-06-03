@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
+import { updateProfile } from "@/lib/api/auth";
 
 const steps = [
   {
@@ -34,26 +34,18 @@ const steps = [
 
 export default function ProfileSetupWizard() {
   const router = useRouter();
-  const supabase = useMemo(() => createClient(), []);
   const [stepIndex, setStepIndex] = useState(0);
   const [message, setMessage] = useState("");
   const currentStep = steps[stepIndex];
   const progress = Math.round(((stepIndex + 1) / steps.length) * 100);
 
   const finishSetup = async () => {
-    const { error } = await supabase.auth.updateUser({
-      data: {
-        profile_completed: true,
-        profile_completed_at: new Date().toISOString(),
-      },
-    });
-
-    if (error) {
-      setMessage(error.message);
-      return;
+    try {
+      await updateProfile({ profile_completed: true });
+      router.replace("/dashboard");
+    } catch (error: any) {
+      setMessage(error?.message || "Failed to save profile settings. Please try again.");
     }
-
-    router.replace("/dashboard");
   };
 
   const goNext = async () => {

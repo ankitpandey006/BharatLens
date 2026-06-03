@@ -1,9 +1,31 @@
+"use client";
+
+import { useState, useEffect } from "react";
 import SavedItemCard from "@/components/cards/SavedItemCard";
 import { getSavedItems } from "@/lib/services/content";
 
 export default function SavedPage() {
-  const dummySavedItems = getSavedItems();
-  const savedCount = dummySavedItems.length;
+  const [savedItems, setSavedItems] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadSavedItems() {
+      try {
+        setLoading(true);
+        const data = await getSavedItems();
+        setSavedItems(data || []);
+      } catch (error) {
+        console.error("Failed to load saved items:", error);
+        setSavedItems([]);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadSavedItems();
+  }, []);
+
+  const savedCount = savedItems.length;
 
   return (
     <section className="min-h-screen bg-[#F5F3EE] px-4 py-8 sm:px-6">
@@ -23,14 +45,14 @@ export default function SavedPage() {
           </div>
         </div>
 
-        {dummySavedItems.length === 0 ? (
+        {savedItems.length === 0 ? (
           <div className="mt-8 rounded-2xl border border-[#E5E7EB] bg-white p-8 text-center shadow-md">
             <p className="text-lg font-semibold text-[#1A3C6E]">No saved items yet</p>
             <p className="mt-1 text-sm text-[#111827]/70">Save listings from BharatLens to access them quickly here.</p>
           </div>
         ) : (
           <div className="mt-8 grid gap-5 xl:grid-cols-2">
-            {dummySavedItems.map((item) => (
+            {savedItems.map((item: any) => (
               <SavedItemCard key={item.id} item={item} />
             ))}
           </div>

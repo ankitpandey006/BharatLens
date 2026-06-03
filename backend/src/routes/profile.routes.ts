@@ -15,6 +15,7 @@ router.get("/me", requireAuth, getOwnProfileHandler);
 router.patch("/me", requireAuth, validate(profileUpdateSchema, "body"), updateOwnProfileHandler);
 router.get("/", requireAuth, getOwnProfileHandler);
 router.post("/", requireAuth, validate(profileCreateSchema, "body"), createOwnProfileHandler);
+router.put("/", requireAuth, validate(profileUpdateSchema, "body"), updateOwnProfileHandler);
 router.patch("/", requireAuth, validate(profileUpdateSchema, "body"), updateOwnProfileHandler);
 router.get("/:id", validate(profileIdParamSchema, "params"), getProfileHandler);
 

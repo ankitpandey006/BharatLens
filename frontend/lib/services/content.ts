@@ -1,125 +1,38 @@
 /**
- * Content service — dummy data layer for BharatLens listings.
- * TODO: Replace getSchemes/getScholarships/getJobs/getExams with Supabase PostgreSQL queries.
- * TODO: Replace getSavedItems/getNotifications with authenticated Supabase API routes.
+ * Content service — fetches real data from BharatLens backend APIs.
+ * Falls back to dummy data only for development/fallback purposes.
  */
-import { dummyExams } from "@/data/dummyExams";
-import { dummyJobs } from "@/data/dummyJobs";
-import { dummyNotifications } from "@/data/dummyNotifications";
-import { dummySavedItems } from "@/data/dummySavedItems";
-import { dummyScholarships } from "@/data/dummyScholarships";
-import { dummySchemes } from "@/data/dummySchemes";
-import type { NotificationItem, SavedItem } from "@/types";
-import type { NotificationRecord, OpportunityRecord, SavedRecord } from "@/lib/types/content";
+import * as schemesApi from "@/lib/api/schemes";
+import * as jobsApi from "@/lib/api/jobs";
+import * as scholarshipsApi from "@/lib/api/scholarships";
+import * as examsApi from "@/lib/api/exams";
+import * as savedItemsApi from "@/lib/api/saved-items";
+import * as notificationsApi from "@/lib/api/notifications";
 
-const DEFAULT_CREATED_AT = "2026-04-01T00:00:00.000Z";
-const DEFAULT_UPDATED_AT = "2026-05-20T00:00:00.000Z";
-
-export function getSchemes() {
-  return dummySchemes;
+/**
+ * Fetch schemes from backend, fallback to dummy data
+ */
+export async function getSchemes() {
+  return await schemesApi.getSchemes();
 }
 
-export function getScholarships() {
-  return dummyScholarships;
+export async function getScholarships() {
+  return await scholarshipsApi.getScholarships();
 }
 
-export function getJobs() {
-  return dummyJobs;
+export async function getJobs() {
+  return await jobsApi.getJobs();
 }
 
-export function getExams() {
-  return dummyExams;
+export async function getExams() {
+  return await examsApi.getExams();
 }
 
-export function getSavedItems(): SavedItem[] {
-  return dummySavedItems;
+export async function getSavedItems(): Promise<any[]> {
+  return await savedItemsApi.getSavedItems();
 }
 
-export function getNotifications(): NotificationItem[] {
-  return dummyNotifications;
+export async function getNotifications(): Promise<any[]> {
+  return await notificationsApi.getNotifications();
 }
 
-export function getNormalizedOpportunities(): OpportunityRecord[] {
-  const schemes: OpportunityRecord[] = dummySchemes.map((item) => ({
-    id: item.id,
-    title: item.title,
-    category: item.category,
-    provider: item.provider,
-    eligibility: item.eligibility,
-    benefit: item.benefit,
-    deadline: item.deadline,
-    officialLink: `https://example.gov.in/${item.id}`,
-    status: item.status,
-    source: "BharatLens Dummy",
-    tags: ["scheme", item.category.toLowerCase()],
-    createdAt: DEFAULT_CREATED_AT,
-    updatedAt: DEFAULT_UPDATED_AT,
-  }));
-
-  const scholarships: OpportunityRecord[] = dummyScholarships.map((item) => ({
-    id: item.id,
-    title: item.title,
-    category: item.category,
-    provider: item.provider,
-    eligibility: item.eligibility,
-    benefit: item.amount,
-    deadline: item.deadline,
-    officialLink: `https://example.gov.in/${item.id}`,
-    status: item.status,
-    source: "BharatLens Dummy",
-    tags: ["scholarship", item.category.toLowerCase()],
-    createdAt: DEFAULT_CREATED_AT,
-    updatedAt: DEFAULT_UPDATED_AT,
-  }));
-
-  const jobs: OpportunityRecord[] = dummyJobs.map((item) => ({
-    id: item.id,
-    title: item.title,
-    category: "Government Job",
-    provider: item.organization,
-    state: item.location,
-    location: item.location,
-    eligibility: item.qualification,
-    benefit: `${item.vacancies} vacancies`,
-    deadline: item.deadline,
-    officialLink: `https://example.gov.in/${item.id}`,
-    status: item.status,
-    source: "BharatLens Dummy",
-    tags: ["job", item.location.toLowerCase()],
-    createdAt: DEFAULT_CREATED_AT,
-    updatedAt: DEFAULT_UPDATED_AT,
-  }));
-
-  const exams: OpportunityRecord[] = dummyExams.map((item) => ({
-    id: item.id,
-    title: item.title,
-    category: item.category,
-    provider: item.conductingBody,
-    benefit: `Exam Date: ${item.examDate}`,
-    deadline: item.applicationDeadline,
-    officialLink: `https://example.gov.in/${item.id}`,
-    status: item.status,
-    source: "BharatLens Dummy",
-    tags: ["exam", item.category.toLowerCase()],
-    createdAt: DEFAULT_CREATED_AT,
-    updatedAt: DEFAULT_UPDATED_AT,
-  }));
-
-  return [...schemes, ...scholarships, ...jobs, ...exams];
-}
-
-export function getNormalizedSavedItems(): SavedRecord[] {
-  return dummySavedItems.map((item) => ({
-    ...item,
-    source: "BharatLens Dummy",
-    createdAt: DEFAULT_CREATED_AT,
-    updatedAt: DEFAULT_UPDATED_AT,
-  }));
-}
-
-export function getNormalizedNotifications(): NotificationRecord[] {
-  return dummyNotifications.map((item) => ({
-    ...item,
-    source: "BharatLens Dummy",
-  }));
-}

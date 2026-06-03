@@ -11,6 +11,8 @@ import profileRoutes from "./profile.routes";
 import notificationsRoutes from "./notifications.routes";
 import savedRoutes from "./saved.routes";
 import savedItemsRoutes from "./saved-items.routes";
+import collectorRoutes from "./collector.routes";
+import pdfRoutes from "./pdf.routes";
 import docsRoutes from "./docs.routes";
 import testRoutes from "./test.route";
 
@@ -28,6 +30,8 @@ export {
   notificationsRoutes,
   savedRoutes,
   savedItemsRoutes,
+  collectorRoutes,
+  pdfRoutes,
   docsRoutes,
   testRoutes,
 };

@@ -11,6 +11,8 @@ const envSchema = z.object({
   SUPABASE_ANON_KEY: z.string().min(1),
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
   JWT_SECRET: z.string().min(32),
+  DATA_GOV_API_KEY: z.string().optional(),
+  ENABLE_COLLECTOR_CRON: z.coerce.boolean().default(false),
 });
 
 type Env = z.infer<typeof envSchema>;

@@ -49,8 +49,10 @@ export async function fetchSavedItems(userId: string): Promise<SavedItemWithDeta
 export async function saveItem(userId: string, itemId: string, type: string) {
   const itemType = type as SavedItemType;
   const existing = await findSavedItem(userId, itemId, itemType);
+  
+  // If already saved, return the existing item instead of throwing error (duplicate-safe)
   if (existing) {
-    throw new AppError("Item already saved", 409);
+    return existing;
   }
 
   return addSavedItem(userId, itemId, itemType);

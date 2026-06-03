@@ -1,36 +1,26 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import { getAdminSources } from "@/lib/api/admin";
+
 export default function SourcesPage() {
-  const sources = [
-    {
-      id: "1",
-      name: "Ministry of Education",
-      trustScore: 99,
-      itemsProcessed: 342,
-      category: "Government",
-    },
-    {
-      id: "2",
-      name: "AICTE",
-      trustScore: 97,
-      itemsProcessed: 156,
-      category: "Government",
-    },
-    {
-      id: "3",
-      name: "State Employment Exchange",
-      trustScore: 85,
-      itemsProcessed: 89,
-      category: "Government",
-    },
-    {
-      id: "4",
-      name: "Educational News Portal",
-      trustScore: 72,
-      itemsProcessed: 234,
-      category: "Third-party",
-    },
-  ];
+  const [sources, setSources] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadSources() {
+      try {
+        const response = await getAdminSources();
+        setSources(response);
+      } catch (error) {
+        console.error("Failed to load admin sources:", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadSources();
+  }, []);
 
   return (
     <div className="space-y-6 sm:space-y-8">
