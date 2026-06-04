@@ -1,106 +1,40 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getAdminItemsByStatus } from "@/lib/api/admin";
-import { filterAdminItems, sortAdminItems } from "@/lib/dummyAdminData";
-import FilterBar from "@/components/admin/FilterBar";
-import VerificationTable from "@/components/admin/VerificationTable";
-import VerificationDetailPanel from "@/components/admin/VerificationDetailPanel";
-import type { AdminItem, FilterState } from "@/types/admin";
+import AdminItemTable from "@/components/admin/AdminItemTable";
+import {
+  fetchAdminItemsByStatus,
+  type BackendAdminContentItem,
+} from "@/lib/api/admin";
 
 export default function RejectedPage() {
-  const [selectedItem, setSelectedItem] = useState<AdminItem | null>(null);
-  const [isPanelOpen, setIsPanelOpen] = useState(false);
-  const [filters, setFilters] = useState<FilterState>({
-    search: "",
-    type: "all",
-    status: "all",
-    state: "",
-    source: "",
-    sortBy: "latest",
-    sortOrder: "desc",
-  });
-  const [rejectedItems, setRejectedItems] = useState<AdminItem[]>([]);
-  const [items, setItems] = useState<AdminItem[]>([]);
+  const [items, setItems] = useState<BackendAdminContentItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    async function loadRejectedItems() {
-      try {
-        const response = await getAdminItemsByStatus("rejected");
-        setRejectedItems(response);
-        setItems(response);
-      } catch (error) {
-        console.error("Failed to load rejected admin items:", error);
-      }
-    }
-
-    loadRejectedItems();
+    void fetchAdminItemsByStatus("rejected")
+      .then(setItems)
+      .catch((err) => setError(err instanceof Error ? err.message : String(err)))
+      .finally(() => setIsLoading(false));
   }, []);
-
-  const states = Array.from(new Set(rejectedItems.map((item) => item.state)));
-  const sources = Array.from(
-    new Set(rejectedItems.map((item) => item.sourceName))
-  );
-
-  const handleFilterChange = (newFilters: Partial<FilterState>) => {
-    const updatedFilters = { ...filters, ...newFilters };
-    setFilters(updatedFilters);
-
-    let filtered = filterAdminItems(rejectedItems, {
-      search: updatedFilters.search,
-      type: updatedFilters.type === "all" ? undefined : updatedFilters.type,
-      state: updatedFilters.state || undefined,
-      source: updatedFilters.source || undefined,
-    });
-
-    filtered = sortAdminItems(
-      filtered,
-      updatedFilters.sortBy,
-      updatedFilters.sortOrder
-    );
-    setItems(filtered);
-  };
-
-  const handleRowClick = (item: AdminItem) => {
-    setSelectedItem(item);
-    setIsPanelOpen(true);
-  };
-
-  const handleStatusChange = (id: string, newStatus: AdminItem["status"]) => {
-    setItems(
-      items.map((item) =>
-        item.id === id ? { ...item, status: newStatus } : item
-      )
-    );
-    if (selectedItem?.id === id) {
-      setSelectedItem({ ...selectedItem, status: newStatus });
-    }
-  };
 
   return (
     <div className="space-y-8">
       <div>
         <h1 className="text-3xl font-bold text-[#1A3C6E]">Rejected Items</h1>
         <p className="mt-2 text-[#111827]/60">
-          Items that were rejected or need reconsideration
+          Items that were rejected by the verification workflow.
         </p>
       </div>
 
-      <FilterBar
-        filters={filters}
-        onFilterChange={handleFilterChange}
-        states={states}
-        sources={sources}
-      />
-
-      <VerificationTable items={items} onRowClick={handleRowClick} />
-
-      <VerificationDetailPanel
-        item={selectedItem}
-        isOpen={isPanelOpen}
-        onClose={() => setIsPanelOpen(false)}
-        onStatusChange={handleStatusChange}
-      />
+      {error ? (
+        <div className="rounded-2xl border border-[#FECACA] bg-red-50 p-6 text-sm text-red-700">
+          {error}
+        </div>
+      ) : (
+        <AdminItemTable items={items} isLoading={isLoading} />
+      )}
     </div>
   );
 }

@@ -5,7 +5,7 @@ Feature modules for BharatLens. Each folder should own types, services, and (lat
 | Module | Status |
 |--------|--------|
 | `auth/` | Supabase client auth; server actions TODO in `authService.ts` |
-| `jobs/`, `schemes/`, `scholarships/`, `exams/` | Stub services — replace with backend API calls |
-| `profile/`, `saved/`, `notifications/` | Stub services — replace with Supabase/API |
+| `jobs/`, `schemes/`, `scholarships/`, `exams/` | Backend API wired through `lib/api/content-api.ts` |
+| `profile/`, `saved/`, `notifications/` | Backend and Supabase integration in progress |
 
-**Current data source:** `lib/services/content.ts` and `data/` dummy files until backend is connected.
+**Current data source:** backend API endpoints via `lib/api/*`; dummy data sources have been removed.

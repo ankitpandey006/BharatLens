@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   Bell,
@@ -14,127 +14,168 @@ import {
   UserRound,
   Zap,
   CheckCircle,
+  AlertCircle,
 } from "lucide-react";
-import {
-  getExams,
-  getJobs,
-  getNotifications,
-  getSavedItems,
-  getScholarships,
-  getSchemes,
-} from "@/lib/services/content";
+import { getCurrentUser, type UserProfile } from "@/lib/api/auth-api";
+import { fetchDashboardStats, fetchRecommendations, fetchNotifications } from "@/lib/api/content-api";
+
+interface DashboardStats {
+  schemes: number;
+  scholarships: number;
+  jobs: number;
+  exams: number;
+  saved: number;
+  notifications: number;
+}
+
+const defaultStats: DashboardStats = {
+  schemes: 0,
+  scholarships: 0,
+  jobs: 0,
+  exams: 0,
+  saved: 0,
+  notifications: 0,
+};
+
+const quickActions = [
+  {
+    title: "Ask AI",
+    text: "Get instant help",
+    href: "/chatbot",
+    icon: Bot,
+  },
+  {
+    title: "Saved Items",
+    text: "Review later",
+    href: "/saved",
+    icon: Bookmark,
+  },
+];
+
+const updates = [
+  "New scholarship found for students in your state",
+  "Government job notification added today",
+  "Exam alert updated with new application date",
+];
 
 export default function DashboardPage() {
-  const [schemesCount, setSchemesCount] = useState(0);
-  const [scholarshipsCount, setScholarshipsCount] = useState(0);
-  const [jobsCount, setJobsCount] = useState(0);
-  const [examsCount, setExamsCount] = useState(0);
-  const [notificationsData, setNotificationsData] = useState<any[]>([]);
-  const [savedCount, setSavedCount] = useState(0);
-  const [loading, setLoading] = useState(true);
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
+  const [userLoading, setUserLoading] = useState(true);
+  const [stats, setStats] = useState<DashboardStats>(defaultStats);
+  const [recommendations, setRecommendations] = useState<Array<{title: string; match: string; tag: string}>>();
+  const [notificationsList, setNotificationsList] = useState<string[]>([]);
 
   useEffect(() => {
-    async function loadDashboardData() {
+    async function loadUser() {
       try {
-        setLoading(true);
-        const [schemes, scholarships, jobs, exams, notifications, saved] = await Promise.all([
-          getSchemes(),
-          getScholarships(),
-          getJobs(),
-          getExams(),
-          getNotifications(),
-          getSavedItems(),
-        ]);
-
-        setSchemesCount(schemes?.length || 0);
-        setScholarshipsCount(scholarships?.length || 0);
-        setJobsCount(jobs?.length || 0);
-        setExamsCount(exams?.length || 0);
-        setNotificationsData((notifications || []).slice(0, 3).map((n: any) => n.message || String(n)));
-        setSavedCount(saved?.length || 0);
+        const user = await getCurrentUser();
+        setCurrentUser(user);
       } catch (error) {
-        console.error("Failed to load dashboard data:", error);
+        console.error("Failed to load current user:", error);
       } finally {
-        setLoading(false);
+        setUserLoading(false);
       }
     }
 
-    loadDashboardData();
+    loadUser();
   }, []);
 
-  const stats = [
+  useEffect(() => {
+    async function loadData() {
+      // Use Promise.allSettled to handle each widget independently
+      // If one fails, others still load
+      const results = await Promise.allSettled([
+        fetchDashboardStats(),
+        fetchRecommendations({ limit: 3, optional: true }),
+        fetchNotifications({ limit: 3, optional: true }),
+      ]);
+
+      // Process dashboard stats (critical, always required)
+      if (results[0].status === "fulfilled") {
+        const dashboardStats = results[0].value;
+        setStats({
+          schemes: dashboardStats.total_schemes || 0,
+          scholarships: dashboardStats.total_scholarships || 0,
+          jobs: dashboardStats.total_jobs || 0,
+          exams: dashboardStats.total_exams || 0,
+          saved: dashboardStats.total_saved_items || 0,
+          notifications: dashboardStats.total_notifications || 0,
+        });
+      } else {
+        // Use default stats if fetch fails
+        setStats(defaultStats);
+      }
+
+      // Process recommendations (optional widget)
+      if (results[1].status === "fulfilled") {
+        const recsResponse = results[1].value;
+        if (recsResponse && recsResponse.items && recsResponse.items.length > 0) {
+          setRecommendations(
+            recsResponse.items.map((item) => {
+              const itemData = item.item_data as Record<string, unknown> | undefined;
+              return {
+                title: (itemData?.title as string) || "Recommendation",
+                match: `${Math.round((item.match_score || 0) * 100)}%`,
+                tag: item.item_type.charAt(0).toUpperCase() + item.item_type.slice(1),
+              };
+            })
+          );
+        }
+      }
+      // If recommendations fail, leave as undefined (shows default message)
+
+      // Process notifications (optional widget)
+      if (results[2].status === "fulfilled") {
+        const notifResponse = results[2].value;
+        if (notifResponse && notifResponse.items && notifResponse.items.length > 0) {
+          setNotificationsList(notifResponse.items.map((n) => n.message));
+        }
+      }
+      // If notifications fail, leave as empty (shows default messages)
+    }
+
+    loadData();
+  }, []);
+
+  const statCards = [
     {
       label: "Eligible Schemes",
-      value: String(schemesCount),
+      value: String(stats.schemes),
       icon: FileText,
       href: "/schemes",
     },
     {
       label: "Scholarships",
-      value: String(scholarshipsCount),
+      value: String(stats.scholarships),
       icon: GraduationCap,
       href: "/scholarships",
     },
     {
       label: "Jobs Matched",
-      value: String(jobsCount),
+      value: String(stats.jobs),
       icon: Briefcase,
       href: "/jobs",
     },
     {
       label: "Exam Alerts",
-      value: String(examsCount),
+      value: String(stats.exams),
       icon: CalendarDays,
       href: "/exams",
     },
   ];
 
-  const quickActions = [
+  const recommendationsList = recommendations || [
     {
-      title: "Ask AI",
-      text: "Get instant help",
-      href: "/chatbot",
-      icon: Bot,
-    },
-    {
-      title: "Update Profile",
-      text: "Improve matches",
-      href: "/profile/setup",
-      icon: UserRound,
-    },
-    {
-      title: "Saved Items",
-      text: "Review later",
-      href: "/saved",
-      icon: Bookmark,
+      title: "Complete your profile to see personalized recommendations",
+      match: "--",
+      tag: "Info",
     },
   ];
 
-  const recommendations = [
-    {
-      title: "Student scholarship matching your profile",
-      meta: "Education support · Deadline in 18 days",
-      match: "92%",
-      tag: "Scholarship",
-    },
-    {
-      title: "State skill development scheme",
-      meta: "Training benefit · Documents required",
-      match: "86%",
-      tag: "Scheme",
-    },
-    {
-      title: "Public sector exam notification",
-      meta: "Graduate eligible · Application window open",
-      match: "78%",
-      tag: "Exam",
-    },
-  ];
-
-  const updates = [
-    "New scholarship found for students in your state",
-    "Government job notification added today",
-    "Exam alert updated with new application date",
+  const notificationsToShow = notificationsList.length > 0 ? notificationsList : [
+    "Check out new opportunities in your state",
+    "Profile completion increases match accuracy",
+    "Set preferences to get better recommendations",
   ];
 
   return (
@@ -159,13 +200,25 @@ export default function DashboardPage() {
               </p>
 
               <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-                <Link
-                  href="/profile/setup"
-                  prefetch={false}
-                  className="inline-flex items-center justify-center rounded-full bg-white px-5 py-3 text-sm font-semibold text-[#1A3C6E] transition hover:bg-[#F5F3EE]"
-                >
-                  Complete Profile
-                </Link>
+                {!currentUser?.profile_completed && (
+                  <Link
+                    href="/profile/setup"
+                    prefetch={false}
+                    className="inline-flex items-center justify-center rounded-full bg-white px-5 py-3 text-sm font-semibold text-[#1A3C6E] transition hover:bg-[#F5F3EE]"
+                  >
+                    Complete Profile
+                  </Link>
+                )}
+
+                {currentUser?.profile_completed && (
+                  <Link
+                    href="/profile"
+                    prefetch={false}
+                    className="inline-flex items-center justify-center rounded-full bg-white px-5 py-3 text-sm font-semibold text-[#1A3C6E] transition hover:bg-[#F5F3EE]"
+                  >
+                    View Profile
+                  </Link>
+                )}
 
                 <Link
                   href="/chatbot"
@@ -177,31 +230,75 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            <div className="rounded-3xl border border-white/15 bg-white/10 p-5">
-              <div className="flex items-center justify-between">
-                <p className="text-sm font-semibold text-white/80">
-                  Profile strength
-                </p>
-                <span className="rounded-full bg-white px-3 py-1 text-sm font-bold text-[#1A3C6E]">
-                  40%
-                </span>
-              </div>
+            {/* Profile Strength Card */}
+            {!userLoading && currentUser && (
+              <div className="rounded-3xl border border-white/15 bg-white/10 p-5">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-semibold text-white/80">
+                    {currentUser.profile_completed ? "Profile Complete" : "Profile strength"}
+                  </p>
+                  <span className="rounded-full bg-white px-3 py-1 text-sm font-bold text-[#1A3C6E]">
+                    {currentUser.profile_completion_percentage ?? 0}%
+                  </span>
+                </div>
 
-              <div className="mt-4 h-3 rounded-full bg-white/20">
-                <div className="h-3 w-2/5 rounded-full bg-[#9BB6E5]" />
-              </div>
+                <div className="mt-4 h-3 rounded-full bg-white/20">
+                  <div
+                    className="h-3 rounded-full bg-[#9BB6E5] transition-all duration-300"
+                    style={{
+                      width: `${currentUser.profile_completion_percentage ?? 0}%`,
+                    }}
+                  />
+                </div>
 
-              <p className="mt-4 text-sm leading-6 text-white/70">
-                Add location, education, income, and preference details to get
-                better recommendations.
-              </p>
+                {!currentUser.profile_completed && currentUser.missing_profile_fields && (
+                  <p className="mt-4 text-sm leading-6 text-white/70">
+                    Complete {currentUser.missing_profile_fields.length} more field{currentUser.missing_profile_fields.length !== 1 ? "s" : ""} to get better recommendations.
+                  </p>
+                )}
+
+                {currentUser.profile_completed && (
+                  <p className="mt-4 text-sm leading-6 text-white/70">
+                    ✓ Your profile is complete. You'll get the best recommendations!
+                  </p>
+                )}
+              </div>
+            )}
             </div>
-          </div>
         </section>
+
+        {/* Profile Completion Alert (if incomplete) */}
+        {!userLoading && currentUser && !currentUser.profile_completed && currentUser.missing_profile_fields && (
+          <section className="mt-6 rounded-3xl border border-amber-200 bg-amber-50 p-6">
+            <div className="flex items-start gap-4">
+              <AlertCircle className="mt-0.5 h-6 w-6 shrink-0 text-amber-600" />
+              <div className="flex-1">
+                <h2 className="text-lg font-bold text-amber-900">Complete Your Profile</h2>
+                <p className="mt-2 text-sm text-amber-800">
+                  Your profile is {currentUser.profile_completion_percentage}% complete. Complete the remaining fields for better recommendations:
+                </p>
+                <ul className="mt-3 space-y-1">
+                  {currentUser.missing_profile_fields.map((field) => (
+                    <li key={field} className="text-sm text-amber-800">
+                      • {field.replace(/_/g, " ").charAt(0).toUpperCase() + field.replace(/_/g, " ").slice(1).toLowerCase()}
+                    </li>
+                  ))}
+                </ul>
+                <Link
+                  href="/profile/setup"
+                  prefetch={false}
+                  className="mt-4 inline-flex rounded-full bg-amber-600 px-5 py-2 text-sm font-semibold text-white transition hover:bg-amber-700"
+                >
+                  Complete Profile
+                </Link>
+              </div>
+            </div>
+          </section>
+        )}
 
         {/* Stats */}
         <section className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {stats.map((item) => {
+          {statCards.map((item) => {
             const Icon = item.icon;
 
             return (
@@ -277,17 +374,27 @@ export default function DashboardPage() {
                   </p>
                 </div>
 
-                <Link
-                  href="/chatbot"
-                  prefetch={false}
-                  className="rounded-full border border-[#E5E7EB] px-4 py-2 text-sm font-semibold text-[#1A3C6E] transition hover:border-[#1A3C6E]"
-                >
-                  Ask AI
-                </Link>
+                <div className="flex gap-2">
+                  <Link
+                    href="/recommendations"
+                    prefetch={false}
+                    className="rounded-full border border-[#E5E7EB] px-4 py-2 text-sm font-semibold text-[#1A3C6E] transition hover:border-[#1A3C6E]"
+                  >
+                    View all
+                  </Link>
+
+                  <Link
+                    href="/chatbot"
+                    prefetch={false}
+                    className="rounded-full border border-[#E5E7EB] px-4 py-2 text-sm font-semibold text-[#1A3C6E] transition hover:border-[#1A3C6E]"
+                  >
+                    Ask AI
+                  </Link>
+                </div>
               </div>
 
               <div className="mt-5 grid gap-4">
-                {recommendations.map((item) => (
+                {recommendationsList.map((item) => (
                   <div
                     key={item.title}
                     className="rounded-2xl border border-[#E5E7EB] bg-[#F5F3EE] p-4"
@@ -300,9 +407,6 @@ export default function DashboardPage() {
                         <h3 className="mt-3 font-bold text-[#111827]">
                           {item.title}
                         </h3>
-                        <p className="mt-1 text-sm text-[#111827]/60">
-                          {item.meta}
-                        </p>
                       </div>
 
                       <div className="rounded-2xl bg-white px-4 py-3 text-center">
@@ -350,7 +454,7 @@ export default function DashboardPage() {
               </div>
 
               <div className="mt-4 grid gap-3">
-                {notificationsData.map((item) => (
+                {notificationsToShow.map((item) => (
                   <p
                     key={item}
                     className="rounded-2xl bg-[#F5F3EE] p-3 text-sm leading-5 text-[#111827]/70"
@@ -380,7 +484,7 @@ export default function DashboardPage() {
             <div className="rounded-3xl border border-[#E5E7EB] bg-white p-6 shadow-sm">
               <h2 className="text-xl font-bold text-[#1A3C6E]">Saved items</h2>
               <p className="mt-3 text-sm leading-6 text-[#111827]/65">
-                You have {savedCount} saved opportunities ready for review.
+                You have {stats.saved} saved opportunities ready for review.
               </p>
 
               <Link

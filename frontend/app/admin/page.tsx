@@ -2,178 +2,142 @@
 
 import { useEffect, useState } from "react";
 import AdminStatCard from "@/components/admin/AdminStatCard";
-import { getAdminStats } from "@/lib/api/admin";
-import type { AdminStats } from "@/types/admin";
+import {
+  fetchAdminStats,
+  fetchAdminItemsByStatus,
+  type BackendAdminStats,
+} from "@/lib/api/admin";
 
 export default function AdminDashboard() {
-  const [stats, setStats] = useState<AdminStats | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState<BackendAdminStats | null>(null);
+  const [publishedCount, setPublishedCount] = useState<number>(0);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    async function loadStats() {
-      try {
-        const response = await getAdminStats();
-        setStats(response);
-      } catch (error) {
-        console.error("Failed to load admin stats:", error);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    loadStats();
+    void Promise.all([fetchAdminStats(), fetchAdminItemsByStatus("published")])
+      .then(([statsResponse, publishedItems]) => {
+        setStats(statsResponse);
+        setPublishedCount(publishedItems.length);
+        setIsLoading(false);
+      })
+      .catch((err) => {
+        setError(err instanceof Error ? err.message : String(err));
+        setIsLoading(false);
+      });
   }, []);
 
-  const summary = stats ?? {
-    totalAiItems: 0,
-    pendingVerification: 0,
-    approved: 0,
-    rejected: 0,
-    published: 0,
-    highPriorityAlerts: 0,
-  };
+  if (isLoading) {
+    return (
+      <div className="min-h-[40vh] rounded-2xl border border-[#E5E7EB] bg-white p-12 text-center text-[#111827]/80">
+        Loading admin dashboard...
+      </div>
+    );
+  }
 
-  const typeBreakdown = {
-    scheme: 0,
-    scholarship: 0,
-    job: 0,
-    exam: 0,
-    update: 0,
-  };
-
-  const categoryBreakdown = {
-    sc_st: 0,
-    obc: 0,
-    women: 0,
-    general: 0,
-    other: 0,
-  };
+  if (error) {
+    return (
+      <div className="rounded-2xl border border-[#FECACA] bg-red-50 p-8 text-sm text-red-700">
+        <p className="font-semibold">Unable to load admin dashboard</p>
+        <p>{error}</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">
       <div>
         <h1 className="text-3xl font-bold text-[#1A3C6E]">Dashboard</h1>
         <p className="mt-2 text-[#111827]/60">
-          Overview of your AI data verification system
+          Overview of BharatLens admin metrics and content status
         </p>
       </div>
 
-      {/* Stats Grid */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         <AdminStatCard
-          label="Total AI Items"
-          value={loading ? "..." : summary.totalAiItems}
+          label="Total Users"
+          value={stats?.total_users ?? 0}
           color="blue"
-          icon="Database"
+          icon="Users"
+        />
+        <AdminStatCard
+          label="Total Schemes"
+          value={stats?.total_schemes ?? 0}
+          color="green"
+          icon="Layers"
+        />
+        <AdminStatCard
+          label="Total Scholarships"
+          value={stats?.total_scholarships ?? 0}
+          color="yellow"
+          icon="Award"
+        />
+        <AdminStatCard
+          label="Total Jobs"
+          value={stats?.total_jobs ?? 0}
+          color="purple"
+          icon="Briefcase"
         />
         <AdminStatCard
           label="Pending Verification"
-          value={loading ? "..." : summary.pendingVerification}
+          value={stats?.pending_items ?? 0}
           color="yellow"
           icon="Clock"
         />
         <AdminStatCard
-          label="Approved"
-          value={loading ? "..." : summary.approved}
-          color="blue"
-          icon="CheckCircle"
-        />
-        <AdminStatCard
-          label="Rejected"
-          value={loading ? "..." : summary.rejected}
+          label="Unread Notifications"
+          value={stats?.total_notifications ?? 0}
           color="red"
-          icon="XCircle"
-        />
-        <AdminStatCard
-          label="Published"
-          value={loading ? "..." : summary.published}
-          color="green"
-          icon="Send"
-        />
-        <AdminStatCard
-          label="High Priority Alerts"
-          value={loading ? "..." : summary.highPriorityAlerts}
-          color="purple"
-          icon="AlertCircle"
-          trend={-5}
+          icon="Bell"
         />
       </div>
 
-      {/* Quick Stats */}
       <div className="grid gap-6 md:grid-cols-2">
         <div className="rounded-2xl border border-[#E5E7EB] bg-white p-8">
-          <h3 className="mb-6 font-semibold text-[#1A3C6E]">
-            Items by Type
-          </h3>
+          <h3 className="mb-6 font-semibold text-[#1A3C6E]">Content Summary</h3>
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <span className="text-[#111827]/70">Schemes</span>
+              <span className="text-[#111827]/70">Approved Items</span>
               <span className="font-semibold text-[#1A3C6E]">
-                {typeBreakdown.scheme}
+                {stats?.approved_items ?? 0}
               </span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-[#111827]/70">Scholarships</span>
+              <span className="text-[#111827]/70">Rejected Items</span>
               <span className="font-semibold text-[#1A3C6E]">
-                {typeBreakdown.scholarship}
+                {stats?.rejected_items ?? 0}
               </span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-[#111827]/70">Jobs</span>
+              <span className="text-[#111827]/70">Published Items</span>
               <span className="font-semibold text-[#1A3C6E]">
-                {typeBreakdown.job}
+                {publishedCount}
               </span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-[#111827]/70">Exams</span>
+              <span className="text-[#111827]/70">Saved Items</span>
               <span className="font-semibold text-[#1A3C6E]">
-                {typeBreakdown.exam}
-              </span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-[#111827]/70">Updates</span>
-              <span className="font-semibold text-[#1A3C6E]">
-                {typeBreakdown.update}
+                {stats?.total_saved_items ?? 0}
               </span>
             </div>
           </div>
         </div>
 
         <div className="rounded-2xl border border-[#E5E7EB] bg-white p-8">
-          <h3 className="mb-6 font-semibold text-[#1A3C6E]">
-            Items by Category
-          </h3>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="text-[#111827]/70">SC/ST</span>
-              <span className="font-semibold text-[#1A3C6E]">
-                {categoryBreakdown.sc_st}
-              </span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-[#111827]/70">OBC</span>
-              <span className="font-semibold text-[#1A3C6E]">
-                {categoryBreakdown.obc}
-              </span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-[#111827]/70">Women</span>
-              <span className="font-semibold text-[#1A3C6E]">
-                {categoryBreakdown.women}
-              </span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-[#111827]/70">General</span>
-              <span className="font-semibold text-[#1A3C6E]">
-                {categoryBreakdown.general}
-              </span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-[#111827]/70">Other Categories</span>
-              <span className="font-semibold text-[#1A3C6E]">
-                {categoryBreakdown.other}
-              </span>
-            </div>
+          <h3 className="mb-6 font-semibold text-[#1A3C6E]">Category Breakdown</h3>
+          <div className="space-y-4 text-[#111827]/70">
+            <p>
+              Total schemes: <span className="font-semibold text-[#111827]">{stats?.total_schemes ?? 0}</span>
+            </p>
+            <p>
+              Total scholarships: <span className="font-semibold text-[#111827]">{stats?.total_scholarships ?? 0}</span>
+            </p>
+            <p>
+              Total jobs: <span className="font-semibold text-[#111827]">{stats?.total_jobs ?? 0}</span>
+            </p>
+            <p>
+              Total exams: <span className="font-semibold text-[#111827]">{stats?.total_exams ?? 0}</span>
+            </p>
           </div>
         </div>
       </div>

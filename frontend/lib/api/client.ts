@@ -1,188 +1,205 @@
-import { getAuthToken, clearAuthToken } from "@/lib/auth/storage";
+/**
+ * Centralized API client for BharatLens backend
+ * - Automatically injects auth token from Supabase session
+ * - Handles API response format: {success, message, data}
+ * - Two modes: required (throws on 401) and optional (returns null on 401)
+ * - Provides typed responses
+ */
 
-// ============================================================================
-// TYPES
-// ============================================================================
+import { createClient } from "@/lib/supabase/client";
 
-export interface ApiResponse<T> {
+export interface ApiResponse<T = unknown> {
   success: boolean;
-  message?: string;
+  message: string;
   data?: T;
-  error?: string;
-}
-
-export interface PaginatedResponse<T> {
-  success: boolean;
-  message?: string;
-  data: T[];
   pagination?: {
     page: number;
     limit: number;
     total: number;
     totalPages: number;
+    hasNextPage: boolean;
+    hasPreviousPage: boolean;
   };
 }
 
-export interface RecommendationsListResponse {
-  success: boolean;
-  message?: string;
-  data: {
-    items: any[];
-    count: number;
-  };
-}
+const AUTH_TOKEN_KEY = "bharatlens_auth_token";
 
-export class ApiError extends Error {
-  constructor(
-    public statusCode: number,
-    message: string,
-    public details?: any
-  ) {
-    super(message);
-    this.name = "ApiError";
-  }
-}
+/**
+ * Get current auth token from Supabase session (primary)
+ * Falls back to localStorage if session unavailable
+ */
+async function getAuthToken(): Promise<string | null> {
+  if (typeof window === "undefined") return null;
 
-// ============================================================================
-// API CLIENT
-// ============================================================================
+  try {
+    const supabase = createClient();
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token ?? null;
 
-const DEFAULT_API_URL = "http://localhost:5001/api";
-const BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL ||
-  process.env.NEXT_PUBLIC_API_BASE_URL ||
-  DEFAULT_API_URL;
-
-function normalizePath(path: string) {
-  if (path.startsWith("/api")) {
-    return path.replace(/^\/api/, "");
-  }
-  return path;
-}
-
-async function request<T>(
-  path: string,
-  options: RequestInit = {}
-): Promise<T> {
-  const normalizedPath = normalizePath(path);
-  const url = `${BASE_URL}${normalizedPath.startsWith("/") ? "" : "/"}${normalizedPath}`;
-  const token = getAuthToken();
-
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-    ...(options.headers as Record<string, string>),
-  };
-
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
+    if (token) {
+      try {
+        localStorage.setItem(AUTH_TOKEN_KEY, token);
+      } catch {
+        // ignore localStorage write failures
+      }
+      return token;
+    }
+  } catch {
+    // Ignore errors from Supabase session read.
   }
 
   try {
-    const response = await fetch(url, {
-      ...options,
+    const storedToken = localStorage.getItem(AUTH_TOKEN_KEY);
+    if (storedToken) {
+      return storedToken;
+    }
+  } catch {
+    // ignore localStorage errors
+  }
+
+  return null;
+}
+
+/**
+ * Verify session is still valid by calling /api/auth/me
+ * Only logout if backend confirms invalid session
+ */
+async function verifySessionValid(): Promise<boolean> {
+  if (typeof window === "undefined") return false;
+
+  try {
+    const token = await getAuthToken();
+    if (!token) return false;
+
+    const baseUrl =
+      process.env.NEXT_PUBLIC_API_BASE_URL ??
+      process.env.NEXT_PUBLIC_API_URL ??
+      "http://localhost:5001/api";
+    const response = await fetch(`${baseUrl}/auth/me`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+    });
+
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Handle logout - clears token and redirects to login
+ * Only called after verifying session is actually invalid
+ */
+function handleSessionExpired(): void {
+  if (typeof window === "undefined") return;
+
+  try {
+    localStorage.removeItem(AUTH_TOKEN_KEY);
+  } catch {
+    // ignore localStorage errors
+  }
+
+  try {
+    const next = encodeURIComponent(window.location.pathname + window.location.search);
+    window.location.href = `/login?next=${next}`;
+  } catch {
+    window.location.href = "/login";
+  }
+}
+
+interface ApiClientOptions extends RequestInit {
+  optional?: boolean;
+}
+
+export async function apiClient<T = unknown>(
+  path: string,
+  options?: ApiClientOptions,
+): Promise<T> {
+  const baseUrl =
+    process.env.NEXT_PUBLIC_API_BASE_URL ??
+    process.env.NEXT_PUBLIC_API_URL ??
+    "http://localhost:5001/api";
+  const isOptional = options?.optional ?? false;
+  
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...((options?.headers as Record<string, string>) || {}),
+  };
+
+  // Remove optional flag from fetch options
+  const fetchOptions: RequestInit = { ...options };
+  delete (fetchOptions as Record<string, unknown>).optional;
+
+  const token = await getAuthToken();
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  try {
+    const response = await fetch(`${baseUrl}${path}`, {
+      ...fetchOptions,
       headers,
     });
 
-    const contentType = response.headers.get("content-type");
-    let body: any = null;
+    const rawBody = await response.text();
+    let responseData: ApiResponse<T> = {
+      success: response.ok,
+      message: response.statusText || "Unknown API response",
+    } as ApiResponse<T>;
 
-    if (contentType?.includes("application/json")) {
-      body = await response.json();
-    } else {
-      body = await response.text();
+    if (rawBody) {
+      try {
+        responseData = JSON.parse(rawBody) as ApiResponse<T>;
+      } catch {
+        responseData = {
+          success: response.ok,
+          message: response.statusText || "Unable to parse API response",
+        } as ApiResponse<T>;
+      }
     }
 
     // Handle 401 - Unauthorized
     if (response.status === 401) {
-      clearAuthToken();
-      // Redirect to login if in browser
-      if (typeof window !== "undefined") {
-        window.location.href = "/login";
+      if (isOptional) {
+        if (process.env.NODE_ENV === "development") {
+          console.debug(`[API] Optional endpoint ${path} returned 401, returning empty fallback`);
+        }
+        return undefined as T;
       }
-      throw new ApiError(401, "Unauthorized. Please login again.");
-    }
 
-    // Handle error responses
-    if (!response.ok) {
-      const errorMessage =
-        body?.message ||
-        body?.error ||
-        `API request failed with status ${response.status}`;
-      throw new ApiError(response.status, errorMessage, body);
-    }
-
-    // Return body if it's already parsed JSON and has success flag (backend format)
-    if (typeof body === "object" && body !== null && "success" in body) {
-      if (!body.success && body.message) {
-        throw new ApiError(response.status, body.message, body);
+      const sessionValid = await verifySessionValid();
+      if (!sessionValid) {
+        handleSessionExpired();
       }
-      return body as T;
+
+      throw new Error(
+        responseData.message || "Session expired. Please login again.",
+      );
     }
 
-    // Otherwise return body as-is
-    return body as T;
+    if (!response.ok || responseData.success === false) {
+      const errorMsg = responseData.message || `API request failed: ${response.status}`;
+      if (process.env.NODE_ENV === "development") {
+        console.error(`[API] ${path} failed:`, errorMsg, {
+          status: response.status,
+          success: responseData.success,
+        });
+      }
+      throw new Error(errorMsg);
+    }
+
+    return responseData.data as T;
   } catch (error) {
-    if (error instanceof ApiError) {
-      throw error;
+    if (process.env.NODE_ENV === "development") {
+      console.error(`[API] ${path} error:`, error instanceof Error ? error.message : error);
     }
 
-    if (error instanceof TypeError) {
-      throw new ApiError(0, "Network error. Please check your connection.", error);
+    if (isOptional) {
+      return undefined as T;
     }
 
-    throw new ApiError(500, "An unexpected error occurred", error);
+    throw error;
   }
 }
-
-export async function get<T>(path: string): Promise<T> {
-  return request<T>(path, {
-    method: "GET",
-  });
-}
-
-export async function post<T>(
-  path: string,
-  body?: Record<string, any>
-): Promise<T> {
-  return request<T>(path, {
-    method: "POST",
-    body: body ? JSON.stringify(body) : undefined,
-  });
-}
-
-export async function patch<T>(
-  path: string,
-  body?: Record<string, any>
-): Promise<T> {
-  return request<T>(path, {
-    method: "PATCH",
-    body: body ? JSON.stringify(body) : undefined,
-  });
-}
-
-export async function put<T>(
-  path: string,
-  body?: Record<string, any>
-): Promise<T> {
-  return request<T>(path, {
-    method: "PUT",
-    body: body ? JSON.stringify(body) : undefined,
-  });
-}
-
-export async function del<T>(path: string): Promise<T> {
-  return request<T>(path, {
-    method: "DELETE",
-  });
-}
-
-/**
- * Legacy compatibility - use specific methods (get, post, etc.) instead
- */
-export async function apiClient<T = unknown>(
-  path: string,
-  options?: RequestInit
-): Promise<T> {
-  return request<T>(path, options);
-}
-

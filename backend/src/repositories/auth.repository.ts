@@ -1,4 +1,5 @@
 import { supabase, supabaseAuth } from "../config/supabase";
+import type { User } from "@supabase/supabase-js";
 import { AppError } from "../utils/app-error";
 
 export type UserRole = "user" | "admin" | "moderator";
@@ -21,6 +22,8 @@ export interface UserProfile {
   gender?: string | null;
   preferred_language?: string | null;
   profile_completed?: boolean;
+  profile_completion_percentage?: number;
+  missing_profile_fields?: string[];
   created_at?: string | null;
   updated_at?: string | null;
 }
@@ -64,9 +67,53 @@ function mergeProfileData(user: UserProfile, profile: Partial<UserProfile>): Use
 }
 
 function calculateProfileCompleted(profile: Partial<UserProfile>): boolean {
-  return [profile.state, profile.category, profile.dob, profile.education_level, profile.occupation, profile.user_type].every(
-    (value) => typeof value === "string" && value.trim().length > 0,
+  return Boolean(
+    profile.age &&
+      typeof profile.state === "string" && profile.state.trim().length > 0 &&
+      typeof profile.district === "string" && profile.district.trim().length > 0 &&
+      typeof profile.education_level === "string" && profile.education_level.trim().length > 0 &&
+      typeof profile.occupation === "string" && profile.occupation.trim().length > 0 &&
+      typeof profile.user_type === "string" && profile.user_type.trim().length > 0,
   );
+}
+
+function calculateProfileCompletion(profile: Partial<UserProfile> | UserProfile): {
+  profile_completed: boolean;
+  profile_completion_percentage: number;
+  missing_profile_fields: string[];
+} {
+  const requiredFields = [
+    "full_name",
+    "age",
+    "state",
+    "district",
+    "category",
+    "education_level",
+    "occupation",
+    "user_type",
+    "income_range",
+    "annual_income",
+    "gender",
+    "preferred_language",
+  ] as const;
+
+  const missing: string[] = [];
+
+  for (const field of requiredFields) {
+    const value = profile[field as keyof typeof profile];
+    if (value === null || value === undefined || value === "") {
+      missing.push(field);
+    }
+  }
+
+  const completed = requiredFields.length - missing.length;
+  const percentage = Math.round((completed / requiredFields.length) * 100);
+
+  return {
+    profile_completed: percentage === 100,
+    profile_completion_percentage: percentage,
+    missing_profile_fields: missing,
+  };
 }
 
 function extractMissingColumn(errorMessage: string): string | null {
@@ -105,6 +152,116 @@ async function updateWithMissingColumnFallback(
 
     delete mutablePayload[missingColumn];
   }
+}
+
+function deriveUserFullName(authUser: User): string {
+  const metadata = authUser.user_metadata as Record<string, unknown> | null;
+  const fullName = typeof metadata?.full_name === "string" ? metadata.full_name.trim() : undefined;
+  if (fullName) return fullName;
+
+  const name = typeof metadata?.name === "string" ? metadata.name.trim() : undefined;
+  if (name) return name;
+
+  const email = authUser.email ?? "";
+  const prefix = email.split("@")[0]?.trim();
+  if (prefix) return prefix;
+
+  return "BharatLens User";
+}
+
+async function insertWithMissingColumnFallback(table: "users" | "user_profiles", payload: Record<string, unknown>): Promise<void> {
+  let mutablePayload = { ...payload };
+
+  while (Object.keys(mutablePayload).length > 0) {
+    const { error } = await supabase.from(table).insert(mutablePayload);
+
+    if (!error) {
+      return;
+    }
+
+    const lowerMessage = (error.message ?? "").toLowerCase();
+    if (lowerMessage.includes("duplicate") || lowerMessage.includes("unique")) {
+      return;
+    }
+
+    const missingColumn = extractMissingColumn(error.message);
+    if (!missingColumn || !(missingColumn in mutablePayload)) {
+      throw new AppError(`Failed to insert into ${table}: ${error.message}`, 500);
+    }
+
+    delete mutablePayload[missingColumn];
+  }
+}
+
+async function ensureLocalUserRecord(authUser: User): Promise<void> {
+  const { data: existingUser, error: userError } = await supabase
+    .from("users")
+    .select("id, email, full_name, role")
+    .eq("id", authUser.id)
+    .maybeSingle();
+
+  if (userError) {
+    throw new AppError(`Failed to query local user record: ${userError.message}`, 500);
+  }
+
+  if (existingUser) {
+    const needsName = !existingUser.full_name || String(existingUser.full_name).trim().length === 0;
+    const fallbackName = deriveUserFullName(authUser);
+    if (needsName && fallbackName) {
+      const { error: updateError } = await supabase
+        .from("users")
+        .update({ full_name: fallbackName })
+        .eq("id", authUser.id);
+
+      if (updateError) {
+        throw new AppError(`Failed to update existing user record: ${updateError.message}`, 500);
+      }
+    }
+
+    return;
+  }
+
+  const email = authUser.email ?? "";
+  await insertWithMissingColumnFallback("users", {
+    id: authUser.id,
+    email,
+    full_name: deriveUserFullName(authUser),
+    role: "user",
+  });
+}
+
+async function ensureLocalProfileRecord(userId: string): Promise<void> {
+  const { data: existingProfile, error } = await supabase
+    .from("user_profiles")
+    .select("user_id")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (error) {
+    throw new AppError(`Failed to query user profile record: ${error.message}`, 500);
+  }
+
+  if (existingProfile) {
+    return;
+  }
+
+  await insertWithMissingColumnFallback("user_profiles", {
+    user_id: userId,
+    profile_completed: false,
+    preferred_language: "hinglish",
+  });
+}
+
+export async function syncAuthenticatedUser(authUser: User): Promise<UserProfile> {
+  await ensureLocalUserRecord(authUser);
+  await ensureLocalProfileRecord(authUser.id);
+
+  const user = await findUserById(authUser.id);
+  if (!user) {
+    throw new AppError("Failed to synchronize authenticated user record", 500);
+  }
+
+  return user;
 }
 
 export async function registerUser(data: { full_name: string; email: string; password: string }): Promise<UserProfile> {
@@ -191,7 +348,7 @@ export async function findUserById(id: string): Promise<UserProfile | undefined>
     return undefined;
   }
 
-  const { data: profileRecord, error: profileError } = await supabase
+  let { data: profileRecord, error: profileError } = await supabase
     .from("user_profiles")
     .select("*")
     .eq("user_id", id)
@@ -201,7 +358,23 @@ export async function findUserById(id: string): Promise<UserProfile | undefined>
     throw new AppError(`Failed to fetch user profile: ${profileError.message}`, 500);
   }
 
-  return {
+  if (!profileRecord) {
+    await ensureLocalProfileRecord(id);
+
+    const { data: refreshedProfile, error: refreshedProfileError } = await supabase
+      .from("user_profiles")
+      .select("*")
+      .eq("user_id", id)
+      .maybeSingle();
+
+    if (refreshedProfileError) {
+      throw new AppError(`Failed to fetch user profile after creation: ${refreshedProfileError.message}`, 500);
+    }
+
+    profileRecord = refreshedProfile ?? undefined;
+  }
+
+  const userProfile: UserProfile = {
     id: userRecord.id,
     email: userRecord.email,
     full_name: userRecord.full_name,
@@ -226,6 +399,14 @@ export async function findUserById(id: string): Promise<UserProfile | undefined>
     created_at: userRecord.created_at,
     updated_at: userRecord.updated_at,
   };
+
+  // Calculate profile completion
+  const completion = calculateProfileCompletion(userProfile);
+  userProfile.profile_completed = completion.profile_completed;
+  userProfile.profile_completion_percentage = completion.profile_completion_percentage;
+  userProfile.missing_profile_fields = completion.missing_profile_fields;
+
+  return userProfile;
 }
 
 export async function signOutUser(accessToken: string): Promise<void> {
@@ -262,6 +443,7 @@ export async function updateUserProfile(
   }
 
   const profileUpdates = {
+    full_name: updates.full_name ?? existing.full_name,
     age: updates.age ?? existing.age,
     state: updates.state ?? existing.state,
     district: updates.district ?? existing.district,
@@ -276,9 +458,9 @@ export async function updateUserProfile(
     preferred_language: updates.preferred_language ?? existing.preferred_language,
   };
 
-  const profileCompleted = Object.prototype.hasOwnProperty.call(updates, "profile_completed")
-    ? updates.profile_completed
-    : calculateProfileCompleted(profileUpdates);
+  // Always calculate from actual fields - do not trust frontend profile_completed
+  const completion = calculateProfileCompletion(profileUpdates);
+  const profileCompleted = completion.profile_completed;
 
   if (Object.prototype.hasOwnProperty.call(updates, "full_name")) {
     const { error: userUpdateError } = await supabase

@@ -1,228 +1,320 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Sparkles, RefreshCw, AlertCircle } from "lucide-react";
-import * as recommendationsApi from "@/lib/api/recommendations";
+import { AlertCircle, Zap } from "lucide-react";
+import SchemeCard from "@/components/cards/SchemeCard";
+import ScholarshipCard from "@/components/cards/ScholarshipCard";
+import JobCard from "@/components/cards/JobCard";
+import ExamCard from "@/components/cards/ExamCard";
+import {
+  fetchRecommendations,
+  fetchSavedItems,
+  saveItem,
+  unsaveItem,
+  type Recommendation,
+  type Scheme,
+  type Scholarship,
+  type Job,
+  type Exam,
+} from "@/lib/api/content-api";
+import { getCurrentUser } from "@/lib/api/auth-api";
+import { useAuth } from "@/hooks/useAuth";
+
+interface RecommendationsPageState {
+  recommendations: Recommendation[];
+  loading: boolean;
+  error: string | null;
+  page: number;
+  totalPages: number;
+  total: number;
+}
 
 export default function RecommendationsPage() {
-  const [recommendations, setRecommendations] = useState<recommendationsApi.Recommendation[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [generating, setGenerating] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { session, authLoading } = useAuth();
+  const [state, setState] = useState<RecommendationsPageState>({
+    recommendations: [],
+    loading: true,
+    error: null,
+    page: 1,
+    totalPages: 1,
+    total: 0,
+  });
 
-  // Fetch recommendations on mount
+  const [savedMap, setSavedMap] = useState<Record<string, boolean>>({});
+  const [savingMap, setSavingMap] = useState<Record<string, boolean>>({});
+  const [profileIncomplete, setProfileIncomplete] = useState<boolean | null>(null);
+
   useEffect(() => {
-    async function fetchRecommendations() {
+    async function loadProfileStatus() {
       try {
-        setLoading(true);
-        setError(null);
-        const data = await recommendationsApi.getRecommendations();
-        setRecommendations(data);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to fetch recommendations");
-        setRecommendations([]);
-      } finally {
-        setLoading(false);
+        const currentUser = await getCurrentUser();
+        setProfileIncomplete(currentUser.profile_completed !== true);
+      } catch (error) {
+        setProfileIncomplete(true);
       }
     }
 
-    fetchRecommendations();
+    void loadProfileStatus();
   }, []);
 
-  // Handle generate recommendations
-  const handleGenerateRecommendations = async () => {
+  useEffect(() => {
+    async function loadRecommendations() {
+      try {
+        setState((prev) => ({ ...prev, loading: true, error: null }));
+
+        const result = await fetchRecommendations({
+          page: state.page,
+          limit: 12,
+        });
+
+        setState((prev) => ({
+          ...prev,
+          recommendations: result.items,
+          totalPages: result.totalPages,
+          total: result.total,
+          loading: false,
+        }));
+      } catch (error) {
+        console.error("Failed to load recommendations:", error);
+        setState((prev) => ({
+          ...prev,
+          loading: false,
+          error: "Failed to load recommendations. Please try again.",
+        }));
+      }
+    }
+
+    loadRecommendations();
+  }, [state.page]);
+
+  useEffect(() => {
+    const loadSavedState = async () => {
+      try {
+        const savedResult = await fetchSavedItems({ limit: 200 });
+        const map = savedResult.items.reduce<Record<string, boolean>>((acc, item) => {
+          acc[item.item_id] = true;
+          return acc;
+        }, {});
+        setSavedMap(map);
+      } catch (error) {
+        console.error("Unable to load saved items state:", error);
+      }
+    };
+
+    loadSavedState();
+  }, []);
+
+  const toggleSaved = async (itemId: string, itemType: string) => {
+    setSavingMap((prev) => ({ ...prev, [itemId]: true }));
     try {
-      setGenerating(true);
-      setError(null);
-      const data = await recommendationsApi.generateRecommendations();
-      setRecommendations(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to generate recommendations");
+      const currentlySaved = Boolean(savedMap[itemId]);
+      if (currentlySaved) {
+        await unsaveItem(itemId, itemType as "scheme" | "scholarship" | "job" | "exam");
+        setSavedMap((prev) => ({ ...prev, [itemId]: false }));
+      } else {
+        await saveItem(itemId, itemType as "scheme" | "scholarship" | "job" | "exam");
+        setSavedMap((prev) => ({ ...prev, [itemId]: true }));
+      }
+    } catch (error) {
+      console.error("Save toggle failed:", error);
     } finally {
-      setGenerating(false);
+      setSavingMap((prev) => ({ ...prev, [itemId]: false }));
     }
   };
 
-  // Handle mark as viewed
-  const handleMarkViewed = async (recommendationId: string) => {
-    try {
-      await recommendationsApi.markRecommendationViewed(recommendationId);
-      setRecommendations((prev) =>
-        prev.map((rec) =>
-          rec.id === recommendationId ? { ...rec, is_viewed: true } : rec
-        )
-      );
-    } catch (err) {
-      console.error("Failed to mark recommendation as viewed:", err);
+  const handleNextPage = () => {
+    if (state.page < state.totalPages) {
+      setState((prev) => ({ ...prev, page: prev.page + 1 }));
     }
   };
 
-  const getItemTypeBadgeColor = (itemType: string) => {
-    switch (itemType) {
+  const handlePreviousPage = () => {
+    if (state.page > 1) {
+      setState((prev) => ({ ...prev, page: prev.page - 1 }));
+    }
+  };
+
+  const renderCard = (rec: Recommendation) => {
+    const itemData = rec.item_data;
+    const isSaved = savedMap[rec.item_id] || false;
+    const isSaving = savingMap[rec.item_id] || false;
+    const matchPercentage = Math.round((rec.match_score || 0) * 100);
+
+    const handleToggleSaved = () => {
+      toggleSaved(rec.item_id, rec.item_type);
+    };
+
+    switch (rec.item_type) {
       case "scheme":
-        return "bg-blue-100 text-blue-800";
+        return (
+          <div key={rec.id} className="relative">
+            <div className="absolute top-3 right-3 z-10 inline-flex items-center gap-1 rounded-full bg-[#3B82F6] px-2 py-1 text-xs font-semibold text-white">
+              <Zap size={12} />
+              {matchPercentage}% match
+            </div>
+            <SchemeCard
+              scheme={itemData as Scheme}
+              isSaved={isSaved}
+              saving={isSaving}
+              onToggleSaved={handleToggleSaved}
+            />
+          </div>
+        );
+
       case "scholarship":
-        return "bg-purple-100 text-purple-800";
+        return (
+          <div key={rec.id} className="relative">
+            <div className="absolute top-3 right-3 z-10 inline-flex items-center gap-1 rounded-full bg-[#3B82F6] px-2 py-1 text-xs font-semibold text-white">
+              <Zap size={12} />
+              {matchPercentage}% match
+            </div>
+            <ScholarshipCard
+              scholarship={itemData as Scholarship}
+              isSaved={isSaved}
+              saving={isSaving}
+              onToggleSaved={handleToggleSaved}
+            />
+          </div>
+        );
+
       case "job":
-        return "bg-green-100 text-green-800";
+        return (
+          <div key={rec.id} className="relative">
+            <div className="absolute top-3 right-3 z-10 inline-flex items-center gap-1 rounded-full bg-[#3B82F6] px-2 py-1 text-xs font-semibold text-white">
+              <Zap size={12} />
+              {matchPercentage}% match
+            </div>
+            <JobCard
+              job={itemData as Job}
+              isSaved={isSaved}
+              saving={isSaving}
+              onToggleSaved={handleToggleSaved}
+            />
+          </div>
+        );
+
       case "exam":
-        return "bg-orange-100 text-orange-800";
+        return (
+          <div key={rec.id} className="relative">
+            <div className="absolute top-3 right-3 z-10 inline-flex items-center gap-1 rounded-full bg-[#3B82F6] px-2 py-1 text-xs font-semibold text-white">
+              <Zap size={12} />
+              {matchPercentage}% match
+            </div>
+            <ExamCard
+              exam={itemData as Exam}
+              isSaved={isSaved}
+              saving={isSaving}
+              onToggleSaved={handleToggleSaved}
+            />
+          </div>
+        );
+
       default:
-        return "bg-gray-100 text-gray-800";
+        return null;
     }
   };
 
-  const getItemTypeUrl = (itemType: string, itemId: string) => {
-    switch (itemType) {
-      case "scheme":
-        return `/schemes/${itemId}`;
-      case "scholarship":
-        return `/scholarships/${itemId}`;
-      case "job":
-        return `/jobs/${itemId}`;
-      case "exam":
-        return `/exams/${itemId}`;
-      default:
-        return "/";
-    }
-  };
+  if (authLoading) {
+    return (
+      <section className="min-h-screen bg-[#F5F3EE] px-4 py-8 sm:px-6">
+        <div className="mx-auto max-w-7xl">
+          <div className="text-center">
+            <p className="text-sm text-[#111827]/60">Loading...</p>
+          </div>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="min-h-screen bg-[#F5F3EE] px-4 py-8 sm:px-6">
-      <div className="mx-auto max-w-4xl">
-        {/* Header */}
+      <div className="mx-auto max-w-7xl">
         <div className="rounded-2xl border border-[#E5E7EB] bg-white p-5 shadow-md sm:p-6">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <div className="flex items-center gap-2">
-                <Sparkles className="text-[#1A3C6E]" size={24} />
-                <h1 className="text-3xl font-bold text-[#1A3C6E] sm:text-4xl">AI Recommendations</h1>
-              </div>
-              <p className="mt-2 max-w-3xl text-sm leading-6 text-[#111827]/75">
-                Personalized opportunities matched to your profile based on AI analysis.
-              </p>
-            </div>
-            <button
-              onClick={handleGenerateRecommendations}
-              disabled={generating || loading}
-              className="inline-flex items-center gap-2 rounded-full bg-[#1A3C6E] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#0F2A52] disabled:bg-gray-400"
-            >
-              <RefreshCw size={16} className={generating ? "animate-spin" : ""} />
-              {generating ? "Generating..." : "Generate/Refresh"}
-            </button>
-          </div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-[#3B82F6]">
+            Personalized
+          </p>
+          <h1 className="mt-2 text-3xl font-bold text-[#1A3C6E] sm:text-4xl">
+            AI Recommendations
+          </h1>
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-[#111827]/75">
+            Opportunities tailored to your profile, eligibility, and preferences.
+          </p>
         </div>
 
-        {/* Loading State */}
-        {loading && (
-          <div className="mt-8 rounded-2xl border border-[#E5E7EB] bg-white p-8 text-center shadow-md">
-            <div className="flex justify-center">
-              <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#E5E7EB] border-t-[#1A3C6E]"></div>
-            </div>
-            <p className="mt-4 text-lg font-semibold text-[#1A3C6E]">Loading recommendations...</p>
-          </div>
-        )}
-
-        {/* Error State */}
-        {error && !loading && (
-          <div className="mt-8 rounded-2xl border-2 border-red-200 bg-red-50 p-6">
-            <div className="flex items-center gap-3">
-              <AlertCircle className="text-red-600" size={24} />
-              <div>
-                <h3 className="font-semibold text-red-900">Error loading recommendations</h3>
-                <p className="mt-1 text-sm text-red-800">{error}</p>
+        {profileIncomplete === true && (
+          <div className="mt-6 rounded-xl border border-[#FEF08A] bg-[#FFFACD] p-4 sm:p-5">
+            <div className="flex gap-3">
+              <AlertCircle className="mt-0.5 flex-shrink-0 text-[#EAB308]" size={20} />
+              <div className="flex-1">
+                <h3 className="font-semibold text-[#111827]">
+                  Complete your profile for better recommendations
+                </h3>
+                <p className="mt-1 text-sm text-[#111827]/75">
+                  Add your details to get more accurate opportunities.
+                </p>
+                <Link
+                  href="/profile/setup"
+                  className="mt-3 inline-flex items-center rounded-lg bg-[#EAB308] px-4 py-2 text-sm font-semibold text-[#111827] transition hover:bg-[#D4A000]"
+                >
+                  Complete Profile
+                </Link>
               </div>
             </div>
-            <button
-              onClick={handleGenerateRecommendations}
-              className="mt-4 inline-flex rounded-full border-2 border-red-600 px-4 py-2 text-sm font-semibold text-red-600 transition hover:bg-red-100"
-            >
-              Try Again
-            </button>
           </div>
         )}
 
-        {/* Empty State */}
-        {!loading && !error && recommendations.length === 0 && (
-          <div className="mt-8 rounded-2xl border border-[#E5E7EB] bg-white p-8 text-center shadow-md">
-            <p className="text-lg font-semibold text-[#1A3C6E]">No recommendations yet</p>
-            <p className="mt-2 text-sm text-[#111827]/70">
-              Complete your profile to get personalized opportunities matched to your goals.
+        {state.error && (
+          <div className="mt-6 rounded-xl border border-[#FECACA] bg-red-50 p-4 sm:p-5">
+            <p className="text-sm text-red-700">{state.error}</p>
+          </div>
+        )}
+
+        {state.loading ? (
+          <div className="mt-8 text-center">
+            <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-[#E5E7EB] border-t-[#3B82F6]"></div>
+            <p className="mt-4 text-sm text-[#111827]/60">
+              Loading recommendations...
             </p>
-            <div className="mt-6 flex justify-center gap-4">
-              <Link
-                href="/profile/setup"
-                className="inline-flex rounded-full bg-[#1A3C6E] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#0F2A52]"
-              >
-                Complete Profile
-              </Link>
-              <button
-                onClick={handleGenerateRecommendations}
-                className="inline-flex rounded-full border-2 border-[#1A3C6E] px-4 py-2 text-sm font-semibold text-[#1A3C6E] transition hover:bg-[#F5F3EE]"
-              >
-                Generate Recommendations
-              </button>
+          </div>
+        ) : state.recommendations.length === 0 ? (
+          <div className="mt-8 rounded-xl border border-[#E5E7EB] bg-white p-8 text-center">
+            <p className="text-sm text-[#111827]/60">
+              {profileIncomplete
+                ? "Complete your profile to receive personalized recommendations"
+                : "No recommendations available at this time. Check back later!"}
+            </p>
+          </div>
+        ) : (
+          <>
+            <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {state.recommendations.map((rec) => renderCard(rec))}
             </div>
-          </div>
-        )}
 
-        {/* Recommendations List */}
-        {!loading && !error && recommendations.length > 0 && (
-          <div className="mt-8 space-y-4">
-            {recommendations.map((rec) => (
-              <Link
-                key={rec.id}
-                href={getItemTypeUrl(rec.item_type, rec.item_id)}
-                onClick={() => handleMarkViewed(rec.id)}
-                className={`block rounded-2xl border border-[#E5E7EB] p-5 transition hover:border-[#9BB6E5] hover:shadow-lg ${
-                  rec.is_viewed ? "bg-[#F9FAFB]" : "bg-white"
-                }`}
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1">
-                    {/* Item Type Badge and Score */}
-                    <div className="flex items-center gap-3 mb-2">
-                      <span className={`rounded-full px-3 py-1 text-xs font-semibold ${getItemTypeBadgeColor(rec.item_type)}`}>
-                        {rec.item_type.charAt(0).toUpperCase() + rec.item_type.slice(1)}
-                      </span>
-                      <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-3 py-1 text-sm font-bold text-green-800">
-                        {Math.round(rec.score)}% Match
-                      </span>
-                      {rec.is_viewed && (
-                        <span className="text-xs font-medium text-[#111827]/50">Viewed</span>
-                      )}
-                    </div>
+            {state.totalPages > 1 && (
+              <div className="mt-8 flex items-center justify-between gap-4 rounded-xl border border-[#E5E7EB] bg-white p-4">
+                <button
+                  onClick={handlePreviousPage}
+                  disabled={state.page === 1}
+                  className="rounded-lg bg-[#F9FAFB] px-4 py-2 text-sm font-semibold text-[#111827] transition disabled:opacity-50 hover:bg-[#E5E7EB]"
+                >
+                  Previous
+                </button>
 
-                    {/* Title */}
-                    <h3 className={`text-lg font-semibold ${rec.is_viewed ? "text-[#111827]/60" : "text-[#1A3C6E]"}`}>
-                      {rec.title}
-                    </h3>
+                <p className="text-sm text-[#111827]/60">
+                  Page {state.page} of {state.totalPages}
+                </p>
 
-                    {/* Reason */}
-                    <p className="mt-2 text-sm leading-6 text-[#111827]/70">{rec.reason}</p>
-
-                    {/* Description (if available) */}
-                    {rec.description && (
-                      <p className="mt-3 line-clamp-2 text-sm text-[#111827]/60">{rec.description}</p>
-                    )}
-
-                    {/* Timestamp */}
-                    {rec.created_at && (
-                      <p className="mt-3 text-xs text-[#111827]/50">
-                        Recommended on {new Date(rec.created_at).toLocaleDateString()}
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Arrow Icon */}
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#F5F3EE] text-[#1A3C6E]">
-                    →
-                  </div>
-                </div>
-              </Link>
-            ))}
-          </div>
+                <button
+                  onClick={handleNextPage}
+                  disabled={state.page === state.totalPages}
+                  className="rounded-lg bg-[#F9FAFB] px-4 py-2 text-sm font-semibold text-[#111827] transition disabled:opacity-50 hover:bg-[#E5E7EB]"
+                >
+                  Next
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
     </section>

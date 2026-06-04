@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 
 interface AdminStatCardProps {
   label: string;
-  value: number | string;
+  value: number;
   icon: ReactNode;
   trend?: number;
   color: "blue" | "yellow" | "green" | "red" | "purple";

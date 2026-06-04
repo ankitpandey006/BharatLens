@@ -1,30 +1,29 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getAdminStats } from "@/lib/api/admin";
-import type { AdminStats } from "@/types/admin";
+import { fetchAdminStats, type BackendAdminStats } from "@/lib/api/admin";
 
 export default function AnalyticsPage() {
-  const [stats, setStats] = useState<AdminStats | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState<BackendAdminStats | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    async function loadStats() {
-      try {
-        const response = await getAdminStats();
-        setStats(response);
-      } catch (error) {
-        console.error("Failed to load analytics stats:", error);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    loadStats();
+    void fetchAdminStats()
+      .then((data) => {
+        setStats(data);
+        setIsLoading(false);
+      })
+      .catch((err) => {
+        setError(err instanceof Error ? err.message : String(err));
+        setIsLoading(false);
+      });
   }, []);
 
-  const activeApprovalRate = stats
-    ? Math.round((stats.approved / Math.max(1, stats.totalAiItems)) * 100)
+  const approvalRate = stats
+    ? Math.round(
+        (stats.approved_items / Math.max(stats.approved_items + stats.rejected_items, 1)) * 100,
+      )
     : 0;
 
   return (
@@ -36,55 +35,41 @@ export default function AnalyticsPage() {
         </p>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
-        <div className="rounded-2xl border border-[#E5E7EB] bg-white p-6">
-          <h3 className="mb-4 font-semibold text-[#1A3C6E]">
-            Total AI Items
-          </h3>
-          <div className="text-3xl font-bold text-green-600">
-            {loading ? "..." : stats?.totalAiItems ?? 0}
-          </div>
-          <p className="mt-2 text-sm text-[#111827]/60">
-            Items processed by the AI pipeline
-          </p>
+      {error ? (
+        <div className="rounded-2xl border border-[#FECACA] bg-red-50 p-6 text-sm text-red-700">
+          {error}
         </div>
+      ) : isLoading ? (
+        <div className="rounded-2xl border border-[#E5E7EB] bg-white p-6 text-center text-[#111827]/60">
+          Loading analytics data...
+        </div>
+      ) : (
+        <div className="grid gap-6 md:grid-cols-2">
+          <div className="rounded-2xl border border-[#E5E7EB] bg-white p-6">
+            <h3 className="mb-4 font-semibold text-[#1A3C6E]">Approval Rate</h3>
+            <div className="text-3xl font-bold text-blue-600">{approvalRate}%</div>
+            <p className="mt-2 text-sm text-[#111827]/60">Items approved vs rejected</p>
+          </div>
 
-        <div className="rounded-2xl border border-[#E5E7EB] bg-white p-6">
-          <h3 className="mb-4 font-semibold text-[#1A3C6E]">
-            Approval Rate
-          </h3>
-          <div className="text-3xl font-bold text-blue-600">
-            {loading ? "..." : `${activeApprovalRate}%`}
+          <div className="rounded-2xl border border-[#E5E7EB] bg-white p-6">
+            <h3 className="mb-4 font-semibold text-[#1A3C6E]">Total Notifications</h3>
+            <div className="text-3xl font-bold text-green-600">{stats?.total_notifications ?? 0}</div>
+            <p className="mt-2 text-sm text-[#111827]/60">Notifications handled by the system</p>
           </div>
-          <p className="mt-2 text-sm text-[#111827]/60">
-            Items approved versus total AI items
-          </p>
-        </div>
 
-        <div className="rounded-2xl border border-[#E5E7EB] bg-white p-6">
-          <h3 className="mb-4 font-semibold text-[#1A3C6E]">
-            Pending Verification
-          </h3>
-          <div className="text-3xl font-bold text-yellow-600">
-            {loading ? "..." : stats?.pendingVerification ?? 0}
+          <div className="rounded-2xl border border-[#E5E7EB] bg-white p-6">
+            <h3 className="mb-4 font-semibold text-[#1A3C6E]">Pending Verification</h3>
+            <div className="text-3xl font-bold text-yellow-600">{stats?.pending_items ?? 0}</div>
+            <p className="mt-2 text-sm text-[#111827]/60">Items waiting for review</p>
           </div>
-          <p className="mt-2 text-sm text-[#111827]/60">
-            Items waiting for review
-          </p>
-        </div>
 
-        <div className="rounded-2xl border border-[#E5E7EB] bg-white p-6">
-          <h3 className="mb-4 font-semibold text-[#1A3C6E]">
-            Published Content
-          </h3>
-          <div className="text-3xl font-bold text-green-600">
-            {loading ? "..." : stats?.published ?? 0}
+          <div className="rounded-2xl border border-[#E5E7EB] bg-white p-6">
+            <h3 className="mb-4 font-semibold text-[#1A3C6E]">Saved Items</h3>
+            <div className="text-3xl font-bold text-purple-600">{stats?.total_saved_items ?? 0}</div>
+            <p className="mt-2 text-sm text-[#111827]/60">Total items saved by users</p>
           </div>
-          <p className="mt-2 text-sm text-[#111827]/60">
-            Items published to recommendations
-          </p>
         </div>
-      </div>
+      )}
     </div>
   );
 }

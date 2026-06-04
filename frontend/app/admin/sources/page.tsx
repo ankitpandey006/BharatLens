@@ -1,25 +1,19 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getAdminSources } from "@/lib/api/admin";
+import type { BackendAdminSource } from "@/lib/api/admin";
+import { fetchAdminSources } from "@/lib/api/admin";
 
 export default function SourcesPage() {
-  const [sources, setSources] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [sources, setSources] = useState<BackendAdminSource[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    async function loadSources() {
-      try {
-        const response = await getAdminSources();
-        setSources(response);
-      } catch (error) {
-        console.error("Failed to load admin sources:", error);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    loadSources();
+    void fetchAdminSources()
+      .then(setSources)
+      .catch((err) => setError(err instanceof Error ? err.message : String(err)))
+      .finally(() => setIsLoading(false));
   }, []);
 
   return (
@@ -27,37 +21,46 @@ export default function SourcesPage() {
       <div>
         <h1 className="text-2xl font-bold text-[#1A3C6E] sm:text-3xl">AI Data Sources</h1>
         <p className="mt-2 text-[#111827]/60">
-          Manage and monitor AI data collection sources
+          Manage and monitor data sources used by the BharatLens platform.
         </p>
       </div>
 
-      <div className="grid gap-6">
-        {sources.map((source) => (
-          <div
-            key={source.id}
-            className="flex flex-col gap-3 rounded-2xl border border-[#E5E7EB] bg-white p-4 sm:flex-row sm:items-center sm:justify-between sm:p-6"
-          >
-            <div>
-              <h3 className="font-semibold text-[#1A3C6E]">{source.name}</h3>
-              <p className="text-sm text-[#111827]/60">{source.category}</p>
-            </div>
-            <div className="flex w-full justify-between gap-4 sm:w-auto sm:justify-start sm:gap-6">
-              <div className="text-center">
-                <div className="text-xl font-bold text-green-600">
-                  {source.trustScore}%
-                </div>
-                <p className="text-xs text-[#111827]/60">Trust Score</p>
-              </div>
-              <div className="text-center">
-                <div className="text-xl font-bold text-[#1A3C6E]">
-                  {source.itemsProcessed}
-                </div>
-                <p className="text-xs text-[#111827]/60">Items Processed</p>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
+      {error ? (
+        <div className="rounded-2xl border border-[#FECACA] bg-red-50 p-6 text-sm text-red-700">
+          {error}
+        </div>
+      ) : (
+        <div className="overflow-x-auto rounded-2xl border border-[#E5E7EB] bg-white shadow-sm">
+          <table className="w-full min-w-[720px]">
+            <thead>
+              <tr className="border-b border-[#E5E7EB] bg-[#F5F3EE] text-left text-sm font-semibold text-[#1A3C6E]">
+                <th className="px-6 py-4">Source</th>
+                <th className="px-6 py-4">Verified</th>
+                <th className="px-6 py-4">Verified By</th>
+                <th className="px-6 py-4">Created</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[#E5E7EB]">
+              {sources.map((source) => (
+                <tr key={source.id} className="transition hover:bg-[#F5F3EE]/50">
+                  <td className="px-6 py-4 text-sm text-[#111827]">{source.name || source.id}</td>
+                  <td className="px-6 py-4 text-sm text-[#111827]">{source.is_verified ? "Yes" : "No"}</td>
+                  <td className="px-6 py-4 text-sm text-[#111827]/80">{source.verified_by || "—"}</td>
+                  <td className="px-6 py-4 text-sm text-[#111827]/80">
+                    {source.created_at ? new Date(source.created_at).toLocaleDateString() : "—"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {isLoading && (
+            <div className="p-6 text-center text-[#111827]/60">Loading sources...</div>
+          )}
+          {!isLoading && sources.length === 0 && (
+            <div className="p-6 text-center text-[#111827]/60">No sources found.</div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

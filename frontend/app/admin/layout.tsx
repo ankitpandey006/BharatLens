@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import AdminSidebar from "@/components/admin/AdminSidebar";
 import AdminHeader from "@/components/admin/AdminHeader";
 import { useAuth } from "@/hooks/useAuth";
+import { getCurrentUser, type UserProfile } from "@/lib/api/auth-api";
 
 export default function AdminLayout({
   children,
@@ -13,7 +14,9 @@ export default function AdminLayout({
 }) {
   const router = useRouter();
   const pathname = usePathname();
-  const { authLoading, isAuthenticated } = useAuth();
+  const { authLoading, session } = useAuth();
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
+  const [roleCheckLoading, setRoleCheckLoading] = useState(true);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   useEffect(() => {
@@ -21,10 +24,59 @@ export default function AdminLayout({
       return;
     }
 
-    if (!isAuthenticated) {
+    if (!session) {
       router.replace(`/login?next=${encodeURIComponent(pathname)}`);
+      return;
     }
-  }, [authLoading, isAuthenticated, pathname, router]);
+
+    let canceled = false;
+
+    const loadCurrentUser = async () => {
+      setRoleCheckLoading(true);
+
+      try {
+        const user = await getCurrentUser();
+        if (!canceled) {
+          setCurrentUser(user);
+        }
+      } catch {
+        if (!canceled) {
+          setCurrentUser(null);
+        }
+      } finally {
+        if (!canceled) {
+          setRoleCheckLoading(false);
+        }
+      }
+    };
+
+    loadCurrentUser();
+
+    return () => {
+      canceled = true;
+    };
+  }, [authLoading, pathname, router, session]);
+
+  const role =
+    currentUser?.role ||
+    (session?.user?.user_metadata as { role?: string } | undefined)?.role ||
+    (session?.user?.app_metadata as { role?: string } | undefined)?.role;
+  const isAdmin = role ? ["admin", "moderator"].includes(role) : null;
+
+  useEffect(() => {
+    if (authLoading || roleCheckLoading) {
+      return;
+    }
+
+    if (!session) {
+      router.replace(`/login?next=${encodeURIComponent(pathname)}`);
+      return;
+    }
+
+    if (isAdmin === false) {
+      router.replace("/");
+    }
+  }, [authLoading, roleCheckLoading, pathname, router, session, isAdmin]);
 
   useEffect(() => {
     if (!isMobileSidebarOpen) return;
@@ -37,7 +89,7 @@ export default function AdminLayout({
     return () => document.removeEventListener("keydown", onEscape);
   }, [isMobileSidebarOpen]);
 
-  if (authLoading) {
+  if (authLoading || roleCheckLoading) {
     return (
       <div className="min-h-[40vh] bg-[#F5F3EE] text-[#111827]">
         <div className="mx-auto flex min-h-[40vh] max-w-6xl items-center justify-center px-4 py-8">
@@ -50,8 +102,9 @@ export default function AdminLayout({
     );
   }
 
-  // If not authenticated, layout will redirect via useEffect
-  // Still render admin layout to avoid blank page during redirect
+  if (!session || isAdmin === false) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] lg:flex">

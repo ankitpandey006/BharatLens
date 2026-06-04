@@ -10,102 +10,141 @@ import {
   useState,
 } from "react";
 import type { ReactNode } from "react";
-import { getAuthToken, clearAuthToken, clearUserProfile, getUserProfile } from "@/lib/auth/storage";
+import type { Session, User } from "@supabase/supabase-js";
+import { createClient } from "@/lib/supabase/client";
+import { redirectToLoginAfterSignOut } from "@/lib/auth/urls";
+import { clearAuthToken, saveAuthToken } from "@/lib/api/auth-api";
 
 type AuthContextType = {
   authLoading: boolean;
   isAuthenticated: boolean;
   isSigningOut: boolean;
-  userProfile: Record<string, unknown> | null;
+  session: Session | null;
+  user: User | null;
   signOut: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const AUTH_LOADING_TIMEOUT_MS = 500;
+const AUTH_LOADING_TIMEOUT_MS = 800;
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const supabase = useMemo(() => createClient(), []);
+  const [session, setSession] = useState<Session | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [isSigningOut, setIsSigningOut] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [userProfile, setUserProfile] = useState<Record<string, unknown> | null>(null);
   const mounted = useRef(true);
+  const signingOutRef = useRef(false);
 
   useEffect(() => {
     mounted.current = true;
+    let loadingSettled = false;
 
-    // Check if there's a valid auth token in localStorage
-    const checkAuth = () => {
-      if (!mounted.current) return;
-      
-      const token = getAuthToken();
-      const profile = getUserProfile();
-      setIsAuthenticated(!!token);
-      setUserProfile(profile);
+    const finishLoading = () => {
+      if (!mounted.current || loadingSettled) {
+        return;
+      }
+      loadingSettled = true;
       setAuthLoading(false);
     };
 
-    // Check immediately
-    checkAuth();
+    const timeoutId = window.setTimeout(finishLoading, AUTH_LOADING_TIMEOUT_MS);
 
-    // Also check when storage changes (e.g., logout in another tab)
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === "bharatlens_auth_token" || e.key === "bharatlens_user_profile") {
-        checkAuth();
+    void supabase.auth.getSession().then(({ data: { session: initialSession } }) => {
+      if (!mounted.current || signingOutRef.current) {
+        return;
       }
-    };
 
-    const handleAuthChange = () => {
-      checkAuth();
-    };
+      setSession(initialSession);
+      if (initialSession?.access_token) {
+        saveAuthToken(initialSession.access_token);
+      }
+      if (initialSession) {
+        finishLoading();
+      }
+    });
 
-    window.addEventListener("storage", handleStorageChange);
-    window.addEventListener("authChange", handleAuthChange);
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, newSession) => {
+      if (!mounted.current || signingOutRef.current) {
+        return;
+      }
+
+      if (event === "TOKEN_REFRESHED" && !newSession) {
+        try {
+          await supabase.auth.signOut();
+        } catch {
+          // Clearing local state is enough if sign-out fails.
+        }
+        clearAuthToken();
+        setSession(null);
+        finishLoading();
+        return;
+      }
+
+      if (event === "SIGNED_OUT") {
+        clearAuthToken();
+        setSession(null);
+        finishLoading();
+        return;
+      }
+
+      if (newSession?.access_token) {
+        saveAuthToken(newSession.access_token);
+      }
+      setSession(newSession);
+      finishLoading();
+    });
 
     return () => {
       mounted.current = false;
-      window.removeEventListener("storage", handleStorageChange);
-      window.removeEventListener("authChange", handleAuthChange);
+      window.clearTimeout(timeoutId);
+      subscription.unsubscribe();
     };
-  }, []);
+  }, [supabase]);
 
   const signOut = useCallback(async () => {
-    if (!mounted.current) return;
-
-    setIsSigningOut(true);
-    try {
-      // Clear auth tokens and profile
-      clearAuthToken();
-      clearUserProfile();
-      setIsAuthenticated(false);
-      setUserProfile(null);
-    } finally {
-      setIsSigningOut(false);
+    if (signingOutRef.current) {
+      return;
     }
-  }, []);
+
+    signingOutRef.current = true;
+    setIsSigningOut(true);
+
+    try {
+      await supabase.auth.signOut();
+    } catch (error) {
+      console.error("Failed to sign out:", error);
+    } finally {
+      clearAuthToken();
+      setSession(null);
+      setAuthLoading(false);
+      redirectToLoginAfterSignOut();
+    }
+  }, [supabase]);
 
   const value = useMemo(
     () => ({
       authLoading,
-      isAuthenticated,
+      isAuthenticated: Boolean(session?.user),
       isSigningOut,
-      userProfile,
+      session,
+      user: session?.user ?? null,
       signOut,
     }),
-    [authLoading, isAuthenticated, isSigningOut, userProfile, signOut],
+    [authLoading, isSigningOut, session, signOut],
   );
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {
   const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error("useAuth must be used within AuthProvider");
+
+  if (!context) {
+    throw new Error("useAuth must be used within an AuthProvider");
   }
+
   return context;
 }

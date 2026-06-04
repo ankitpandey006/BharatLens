@@ -40,6 +40,7 @@ export async function updateUserProfile(
     annual_income: number;
     gender: string;
     preferred_language: string;
+    profile_completed: boolean;
   }>,
 ): Promise<UserProfile | undefined> {
   return updateProfile(id, updates);

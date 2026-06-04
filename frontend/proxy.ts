@@ -1,5 +1,12 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { safeRedirectPath } from "@/lib/auth/safe-origin";
+import { createServerClient } from "@supabase/ssr";
+import { safeOriginFromUrl, safeRedirectPath } from "@/lib/auth/safe-origin";
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
+const supabaseAnonKey =
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??
+  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
+  "";
 
 const protectedPrefixes = [
   "/dashboard",
@@ -17,7 +24,7 @@ const protectedPrefixes = [
 
 const authPages = ["/login", "/register", "/forgot-password", "/reset-password"];
 
-const AUTH_COOKIE_KEY = "bharatlens_auth_token";
+const SKIP_AUTH_PATHS = ["/auth/callback"];
 
 function matchesPrefix(pathname: string, prefixes: string[]) {
   return prefixes.some(
@@ -25,8 +32,32 @@ function matchesPrefix(pathname: string, prefixes: string[]) {
   );
 }
 
-export function proxy(request: NextRequest) {
+function redirectToPath(
+  request: NextRequest,
+  pathname: string,
+  searchParams?: Record<string, string>,
+) {
+  const url = new URL(pathname, safeOriginFromUrl(request.url));
+
+  if (searchParams) {
+    Object.entries(searchParams).forEach(([key, value]) => {
+      url.searchParams.set(key, value);
+    });
+  }
+
+  return NextResponse.redirect(url);
+}
+
+export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
+
+  if (SKIP_AUTH_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`))) {
+    return NextResponse.next();
+  }
+
+  if (!supabaseUrl || !supabaseAnonKey) {
+    return NextResponse.next();
+  }
 
   const isProtectedRoute = matchesPrefix(pathname, protectedPrefixes);
   const isAuthPage = matchesPrefix(pathname, authPages);
@@ -35,20 +66,47 @@ export function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  const token = request.cookies.get(AUTH_COOKIE_KEY)?.value;
+  const response = NextResponse.next({
+    request: {
+      headers: request.headers,
+    },
+  });
+
+  const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
+    cookies: {
+      getAll() {
+        return request.cookies.getAll();
+      },
+      setAll(cookiesToSet) {
+        cookiesToSet.forEach(({ name, value, options }) => {
+          request.cookies.set(name, value);
+          response.cookies.set(name, value, options);
+        });
+      },
+    },
+  });
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
   const signedOut = request.nextUrl.searchParams.get("signed_out") === "1";
 
-  if (!token && isProtectedRoute) {
-    const loginUrl = new URL("/login", request.url);
-    loginUrl.searchParams.set("next", safeRedirectPath(pathname) ?? pathname);
-    return NextResponse.redirect(loginUrl);
+  if (!user && isProtectedRoute) {
+    const safeNext = safeRedirectPath(pathname) ?? pathname;
+    return redirectToPath(request, "/login", { next: safeNext });
   }
 
-  if (token && isAuthPage && !signedOut) {
-    return NextResponse.redirect(new URL("/dashboard", request.url));
+  if (user && isAuthPage && !signedOut) {
+    return redirectToPath(request, "/dashboard");
   }
 
-  return NextResponse.next();
+  // Note: Profile completion check is handled in (main)/layout.tsx
+  // Middleware cannot reliably check backend state, so we skip it here
+  // and let the client-side layout component handle the redirect based on
+  // the actual backend profile_completed value from /api/auth/me
+
+  return response;
 }
 
 export const config = {

@@ -14,6 +14,7 @@ const profileFieldSchema = {
   preferred_language: z.string().trim().min(1).optional(),
   dob: z.string().trim().min(1).optional(),
   income_range: z.string().trim().min(1).optional(),
+  profile_completed: z.coerce.boolean().optional(),
 };
 
 export const registerSchema = z

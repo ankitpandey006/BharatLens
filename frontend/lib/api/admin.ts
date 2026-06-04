@@ -1,208 +1,93 @@
-import { get, patch, ApiResponse } from "./client";
-import type { AdminStats, AdminItem as UiAdminItem } from "@/types/admin";
+import { apiClient } from "./client";
 
-interface AdminApiUser {
+export type AdminItemType = "scheme" | "scholarship" | "job" | "exam";
+
+export interface BackendAdminStats {
+  total_users: number;
+  total_schemes: number;
+  total_scholarships: number;
+  total_jobs: number;
+  total_exams: number;
+  pending_items: number;
+  approved_items: number;
+  rejected_items: number;
+  total_saved_items: number;
+  total_notifications: number;
+}
+
+export interface BackendAdminUser {
   id: string;
   email: string;
   full_name: string;
   role: string;
-  profile_completed: boolean;
   created_at?: string;
-  updated_at?: string;
+  [key: string]: unknown;
 }
 
-interface AdminApiSource {
+export interface BackendAdminSource {
   id: string;
-  name: string;
-  type: string;
-  url: string;
-  verified: boolean;
+  name?: string;
+  is_verified?: boolean;
+  verified_by?: string;
+  verified_at?: string;
   created_at?: string;
-  updated_at?: string;
+  [key: string]: unknown;
 }
 
-interface AdminApiUpdate {
+export interface BackendAdminUpdate {
   id: string;
-  title: string;
-  description: string;
-  created_at?: string;
-  updated_at?: string;
-}
-
-interface AdminApiItem {
-  id: string;
-  title: string;
+  title?: string;
   description?: string;
-  category?: string;
-  state?: string;
-  status?: string;
-  verification_status?: string;
-  item_type?: string;
-  provider?: string;
-  benefit?: string;
-  eligibility?: string;
-  deadline?: string;
-  official_url?: string;
   created_at?: string;
   updated_at?: string;
+  [key: string]: unknown;
 }
 
-function safeItemType(itemType?: string): UiAdminItem["type"] {
-  if (itemType === "scholarship" || itemType === "job" || itemType === "exam" || itemType === "scheme" || itemType === "update") {
-    return itemType;
+export interface BackendAdminContentItem {
+  id: string;
+  title?: string;
+  item_type?: AdminItemType;
+  verification_status?: string;
+  status?: string;
+  rejection_reason?: string | null;
+  approved_by?: string | null;
+  approved_at?: string | null;
+  published_by?: string | null;
+  published_at?: string | null;
+  expired_by?: string | null;
+  expired_at?: string | null;
+  is_expired?: boolean;
+  created_at?: string | null;
+  updated_at?: string | null;
+  source_name?: string;
+  source_url?: string;
+  category?: string;
+  [key: string]: unknown;
+}
+
+export async function fetchAdminStats(): Promise<BackendAdminStats> {
+  return apiClient("/admin/stats");
+}
+
+export async function fetchAdminUsers(): Promise<BackendAdminUser[]> {
+  return apiClient("/admin/users");
+}
+
+export async function fetchAdminSources(): Promise<BackendAdminSource[]> {
+  return apiClient("/admin/sources");
+}
+
+export async function fetchAdminUpdates(): Promise<BackendAdminUpdate[]> {
+  return apiClient("/admin/updates");
+}
+
+export async function fetchAdminItemsByStatus(
+  status: "pending" | "approved" | "rejected" | "published",
+  itemType?: AdminItemType,
+): Promise<BackendAdminContentItem[]> {
+  const query = new URLSearchParams();
+  if (itemType) {
+    query.append("itemType", itemType);
   }
-
-  return "scheme";
-}
-
-function mapApiItemToUiItem(item: AdminApiItem): UiAdminItem {
-  const type = safeItemType(item.item_type);
-  const category = (item.category as UiAdminItem["category"]) || "general";
-
-  return {
-    id: item.id,
-    title: item.title || "Untitled item",
-    type,
-    category,
-    sourceName: item.provider || "Unknown source",
-    sourceUrl: item.official_url || "",
-    summary: item.description || "",
-    eligibility: item.eligibility || "Not specified",
-    benefits: item.benefit || "Not specified",
-    deadline: item.deadline || null,
-    state: item.state || "",
-    status:
-      item.status === "approved" || item.status === "published"
-        ? item.status
-        : item.status === "rejected"
-        ? "rejected"
-        : item.status === "pending_verification"
-        ? "pending_verification"
-        : "ai_processed",
-    aiConfidenceScore: 70,
-    sourceTrustScore: 70,
-    aiNotes: item.description || "",
-    adminNotes: "",
-    lastUpdated: item.updated_at || new Date().toISOString(),
-    publishedAt: item.status === "published" ? item.updated_at || new Date().toISOString() : null,
-    tags: [category],
-    matchedUsersCount: undefined,
-    recommendationEligible:
-      item.status === "approved" || item.status === "published",
-  };
-}
-
-export async function getAdminStats(): Promise<AdminStats> {
-  const response = await get<ApiResponse<AdminStats>>("/api/admin/stats");
-
-  if (!response.success) {
-    throw new Error(response.message || "Failed to fetch admin stats");
-  }
-
-  return response.data as AdminStats;
-}
-
-export async function getAdminUsers(): Promise<AdminApiUser[]> {
-  const response = await get<ApiResponse<AdminApiUser[]>>("/api/admin/users");
-
-  if (!response.success) {
-    throw new Error(response.message || "Failed to fetch admin users");
-  }
-
-  return response.data || [];
-}
-
-export async function getAdminSources(): Promise<AdminApiSource[]> {
-  const response = await get<ApiResponse<AdminApiSource[]>>("/api/admin/sources");
-
-  if (!response.success) {
-    throw new Error(response.message || "Failed to fetch admin sources");
-  }
-
-  return response.data || [];
-}
-
-export async function getAdminUpdates(): Promise<AdminApiUpdate[]> {
-  const response = await get<ApiResponse<AdminApiUpdate[]>>("/api/admin/updates");
-
-  if (!response.success) {
-    throw new Error(response.message || "Failed to fetch admin updates");
-  }
-
-  return response.data || [];
-}
-
-export async function getAdminItemsByStatus(
-  status: string,
-  itemType?: string,
-): Promise<UiAdminItem[]> {
-  const query = itemType ? `?itemType=${encodeURIComponent(itemType)}` : "";
-  const response = await get<ApiResponse<AdminApiItem[]>>(
-    `/api/admin/items/${encodeURIComponent(status)}${query}`,
-  );
-
-  if (!response.success) {
-    throw new Error(response.message || `Failed to fetch admin ${status} items`);
-  }
-
-  return (response.data || []).map(mapApiItemToUiItem);
-}
-
-export async function verifyAdminSource(id: string): Promise<AdminApiSource> {
-  const response = await patch<ApiResponse<AdminApiSource>>(
-    `/api/admin/sources/${encodeURIComponent(id)}/verify`,
-  );
-
-  if (!response.success) {
-    throw new Error(response.message || "Failed to verify source");
-  }
-
-  return response.data as AdminApiSource;
-}
-
-export async function approveAdminItem(
-  itemType: string,
-  itemId: string,
-): Promise<UiAdminItem> {
-  const response = await patch<ApiResponse<AdminApiItem>>(
-    `/api/admin/items/${encodeURIComponent(itemType)}/${encodeURIComponent(itemId)}/approve`,
-  );
-
-  if (!response.success) {
-    throw new Error(response.message || "Failed to approve item");
-  }
-
-  return mapApiItemToUiItem(response.data as AdminApiItem);
-}
-
-export async function rejectAdminItem(
-  itemType: string,
-  itemId: string,
-  reason: string,
-): Promise<UiAdminItem> {
-  const response = await patch<ApiResponse<AdminApiItem>>(
-    `/api/admin/items/${encodeURIComponent(itemType)}/${encodeURIComponent(itemId)}/reject`,
-    { reason },
-  );
-
-  if (!response.success) {
-    throw new Error(response.message || "Failed to reject item");
-  }
-
-  return mapApiItemToUiItem(response.data as AdminApiItem);
-}
-
-export async function publishAdminItem(
-  itemType: string,
-  itemId: string,
-): Promise<UiAdminItem> {
-  const response = await patch<ApiResponse<AdminApiItem>>(
-    `/api/admin/items/${encodeURIComponent(itemType)}/${encodeURIComponent(itemId)}/publish`,
-  );
-
-  if (!response.success) {
-    throw new Error(response.message || "Failed to publish item");
-  }
-
-  return mapApiItemToUiItem(response.data as AdminApiItem);
+  return apiClient(`/admin/${status}?${query.toString()}`);
 }

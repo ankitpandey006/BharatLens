@@ -1,53 +1,125 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import ScholarshipCard from "@/components/cards/ScholarshipCard";
 import ListingSearchFilter from "@/components/filters/ListingSearchFilter";
-import * as scholarshipsApi from "@/lib/api/scholarships";
+import { fetchScholarships, fetchSavedItems, saveItem, unsaveItem } from "@/lib/api/content-api";
+import type { Scholarship } from "@/lib/api/content-api";
+
+interface ScholarshipsPageState {
+  scholarships: Scholarship[];
+  loading: boolean;
+  error: string | null;
+  page: number;
+  totalPages: number;
+  total: number;
+}
 
 export default function ScholarshipsPage() {
-  const [scholarships, setScholarships] = useState<scholarshipsApi.Scholarship[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [state, setState] = useState<ScholarshipsPageState>({
+    scholarships: [],
+    loading: true,
+    error: null,
+    page: 1,
+    totalPages: 1,
+    total: 0,
+  });
+
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("All");
+  const [categories, setCategories] = useState<string[]>(["All"]);
+  const [savedMap, setSavedMap] = useState<Record<string, boolean>>({});
+  const [savingMap, setSavingMap] = useState<Record<string, boolean>>({});
 
-  // Fetch scholarships on mount
   useEffect(() => {
-    async function fetchScholarships() {
+    async function loadScholarships() {
       try {
-        setLoading(true);
-        setError(null);
-        const data = await scholarshipsApi.getScholarships();
-        setScholarships(data);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to fetch scholarships");
-        setScholarships([]);
-      } finally {
-        setLoading(false);
+        setState((prev) => ({ ...prev, loading: true, error: null }));
+
+        const params: Record<string, unknown> = {
+          page: state.page,
+          limit: 12,
+        };
+
+        if (search) params.search = search;
+        if (category && category !== "All") params.category = category;
+
+        const result = await fetchScholarships(params);
+
+        setState((prev) => ({
+          ...prev,
+          scholarships: result.items,
+          totalPages: result.totalPages,
+          total: result.total,
+          loading: false,
+        }));
+
+        // Extract unique categories from results
+        if (result.items.length > 0 && categories.length === 1) {
+          const uniqueCategories = new Set(result.items.map((s) => s.category));
+          setCategories(["All", ...Array.from(uniqueCategories)]);
+        }
+      } catch (error) {
+        console.error("Failed to load scholarships:", error);
+        setState((prev) => ({
+          ...prev,
+          loading: false,
+          error: "Failed to load scholarships. Please try again.",
+        }));
       }
     }
 
-    fetchScholarships();
+    loadScholarships();
+  }, [search, category, state.page, categories.length]);
+
+  useEffect(() => {
+    const loadSavedState = async () => {
+      try {
+        const savedResult = await fetchSavedItems({ limit: 200 });
+        const map = savedResult.items.reduce<Record<string, boolean>>((acc, item) => {
+          if (item.item_type === "scholarship") {
+            acc[item.item_id] = true;
+          }
+          return acc;
+        }, {});
+        setSavedMap(map);
+      } catch (error) {
+        console.error("Unable to load saved scholarship state:", error);
+      }
+    };
+
+    loadSavedState();
   }, []);
 
-  const categories = useMemo(
-    () => ["All", ...new Set(scholarships.map((scholarship) => scholarship.category))],
-    [scholarships]
-  );
+  const toggleSaved = async (scholarshipId: string) => {
+    setSavingMap((prev) => ({ ...prev, [scholarshipId]: true }));
+    try {
+      const currentlySaved = Boolean(savedMap[scholarshipId]);
+      if (currentlySaved) {
+        await unsaveItem(scholarshipId, "scholarship");
+        setSavedMap((prev) => ({ ...prev, [scholarshipId]: false }));
+      } else {
+        await saveItem(scholarshipId, "scholarship");
+        setSavedMap((prev) => ({ ...prev, [scholarshipId]: true }));
+      }
+    } catch (error) {
+      console.error("Save toggle failed:", error);
+    } finally {
+      setSavingMap((prev) => ({ ...prev, [scholarshipId]: false }));
+    }
+  };
 
-  const filteredScholarships = useMemo(
-    () =>
-      scholarships.filter((scholarship) => {
-        const matchesSearch = `${scholarship.title} ${scholarship.description} ${scholarship.eligibility}`
-          .toLowerCase()
-          .includes(search.toLowerCase());
-        const matchesCategory = category === "All" || scholarship.category === category;
+  const handleNextPage = () => {
+    if (state.page < state.totalPages) {
+      setState((prev) => ({ ...prev, page: prev.page + 1 }));
+    }
+  };
 
-        return matchesSearch && matchesCategory;
-      }),
-    [category, scholarships, search]
-  );
+  const handlePreviousPage = () => {
+    if (state.page > 1) {
+      setState((prev) => ({ ...prev, page: prev.page - 1 }));
+    }
+  };
 
   return (
     <section className="min-h-screen bg-[#F5F3EE] px-4 py-8 sm:px-6">
@@ -60,48 +132,68 @@ export default function ScholarshipsPage() {
           </p>
         </div>
 
-        {error && (
-          <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 p-4">
-            <p className="text-sm text-red-800">
-              <strong>Error:</strong> {error}
-            </p>
-          </div>
-        )}
+        <div className="mt-6">
+          <ListingSearchFilter
+            searchValue={search}
+            onSearchChange={setSearch}
+            searchPlaceholder="Search scholarships by title, details, or eligibility"
+            selectedFilter={category}
+            onFilterChange={setCategory}
+            filterLabel="Scholarship category"
+            filterOptions={categories}
+            resultCount={state.total}
+          />
+        </div>
 
-        {loading ? (
-          <div className="mt-8 grid gap-5 xl:grid-cols-2">
-            {[...Array(4)].map((_, i) => (
-              <div
-                key={i}
-                className="h-64 animate-pulse rounded-2xl bg-gray-200"
-              />
-            ))}
+        {state.loading ? (
+          <div className="mt-8 text-center">
+            <div className="inline-block">
+              <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#9BB6E5] border-t-[#1A3C6E]" />
+            </div>
+            <p className="mt-3 text-sm font-medium text-[#1A3C6E]">Loading scholarships...</p>
+          </div>
+        ) : state.error ? (
+          <div className="mt-8 rounded-2xl border border-[#E5E7EB] bg-white p-8 text-center shadow-md">
+            <p className="text-lg font-semibold text-[#1A3C6E]">{state.error}</p>
+          </div>
+        ) : state.scholarships.length === 0 ? (
+          <div className="mt-8 rounded-2xl border border-[#E5E7EB] bg-white p-8 text-center shadow-md">
+            <p className="text-lg font-semibold text-[#1A3C6E]">No scholarships found</p>
+            <p className="mt-1 text-sm text-[#111827]/70">Try changing your search or category filter.</p>
           </div>
         ) : (
           <>
-            <div className="mt-6">
-              <ListingSearchFilter
-                searchValue={search}
-                onSearchChange={setSearch}
-                searchPlaceholder="Search scholarships by title, details, or eligibility"
-                selectedFilter={category}
-                onFilterChange={setCategory}
-                filterLabel="Scholarship category"
-                filterOptions={categories}
-                resultCount={filteredScholarships.length}
-              />
+            <div className="mt-8 grid gap-5 xl:grid-cols-2">
+              {state.scholarships.map((scholarship) => (
+                <ScholarshipCard
+                  key={scholarship.id}
+                  scholarship={scholarship}
+                  isSaved={Boolean(savedMap[scholarship.id])}
+                  saving={Boolean(savingMap[scholarship.id])}
+                  onToggleSaved={() => toggleSaved(scholarship.id)}
+                />
+              ))}
             </div>
 
-            {filteredScholarships.length === 0 ? (
-              <div className="mt-8 rounded-2xl border border-[#E5E7EB] bg-white p-8 text-center shadow-md">
-                <p className="text-lg font-semibold text-[#1A3C6E]">No scholarships found</p>
-                <p className="mt-1 text-sm text-[#111827]/70">Try changing your search or category filter.</p>
-              </div>
-            ) : (
-              <div className="mt-8 grid gap-5 xl:grid-cols-2">
-                {filteredScholarships.map((scholarship: any) => (
-                  <ScholarshipCard key={scholarship.id} scholarship={scholarship} />
-                ))}
+            {state.totalPages > 1 && (
+              <div className="mt-8 flex items-center justify-center gap-4">
+                <button
+                  onClick={handlePreviousPage}
+                  disabled={state.page === 1}
+                  className="rounded-2xl border border-[#E5E7EB] px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:bg-[#F5F3EE] disabled:text-[#9CA3AF]"
+                >
+                  Previous
+                </button>
+                <p className="text-sm font-medium text-[#111827]/70">
+                  Page {state.page} of {state.totalPages}
+                </p>
+                <button
+                  onClick={handleNextPage}
+                  disabled={state.page === state.totalPages}
+                  className="rounded-2xl bg-[#1A3C6E] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#3B82F6] disabled:cursor-not-allowed disabled:bg-[#9BB6E5]"
+                >
+                  Next
+                </button>
               </div>
             )}
           </>

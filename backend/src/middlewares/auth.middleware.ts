@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction } from "express";
-import { supabase, supabaseAuth } from "../config/supabase";
+import { supabaseAuth } from "../config/supabase";
+import { syncAuthenticatedUser } from "../repositories/auth.repository";
 import { AppError } from "../utils/app-error";
 
 export async function requireAuth(req: Request, _res: Response, next: NextFunction): Promise<void> {
@@ -26,53 +27,35 @@ export async function requireAuth(req: Request, _res: Response, next: NextFuncti
       return next(new AppError(isExpired ? "Expired authentication token" : "Invalid authentication token", 401));
     }
 
-    const userId = data.user.id;
-    const userEmail = data.user.email ?? "";
+    const authUser = data.user;
 
-    const { data: userRecord, error: userError } = await supabase
-      .from("users")
-      .select("id, email, full_name, role")
-      .eq("id", userId)
-      .maybeSingle();
+    try {
+      const syncedUser = await syncAuthenticatedUser(authUser);
 
-    if (userError) {
-      return next(new AppError("Failed to verify user role", 500));
+      req.user = {
+        id: syncedUser.id,
+        email: syncedUser.email,
+        role: syncedUser.role,
+        full_name: syncedUser.full_name ?? null,
+        age: syncedUser.age ?? null,
+        state: syncedUser.state ?? null,
+        district: syncedUser.district ?? null,
+        category: syncedUser.category ?? null,
+        gender: syncedUser.gender ?? null,
+        education_level: syncedUser.education_level ?? null,
+        occupation: syncedUser.occupation ?? null,
+        user_type: syncedUser.user_type ?? null,
+        income_range: syncedUser.income_range ?? null,
+        annual_income: syncedUser.annual_income ?? null,
+        preferred_language: syncedUser.preferred_language ?? null,
+        dob: syncedUser.dob ?? null,
+      };
+
+      next();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to sync authenticated user";
+      return next(new AppError(message, 500));
     }
-
-    if (!userRecord) {
-      return next(new AppError("User record not found", 401));
-    }
-
-    const { data: profileRecord, error: profileError } = await supabase
-      .from("user_profiles")
-      .select("state, category, gender, education_level, occupation, user_type, income_range, annual_income, dob")
-      .eq("user_id", userId)
-      .maybeSingle();
-
-    if (profileError) {
-      return next(new AppError("Failed to verify user profile", 500));
-    }
-
-    req.user = {
-      id: userId,
-      email: userEmail,
-      role: (userRecord.role as "user" | "admin" | "moderator") ?? "user",
-      full_name: userRecord.full_name as string | null,
-      age: null,
-      state: (profileRecord?.state as string | null | undefined) ?? null,
-      district: null,
-      category: (profileRecord?.category as string | null | undefined) ?? null,
-      gender: (profileRecord?.gender as string | null | undefined) ?? null,
-      education_level: (profileRecord?.education_level as string | null | undefined) ?? null,
-      occupation: (profileRecord?.occupation as string | null | undefined) ?? null,
-      user_type: (profileRecord?.user_type as string | null | undefined) ?? null,
-      income_range: (profileRecord?.income_range as string | null | undefined) ?? null,
-      annual_income: (profileRecord?.annual_income as number | null | undefined) ?? null,
-      preferred_language: null,
-      dob: (profileRecord?.dob as string | null | undefined) ?? null,
-    };
-
-    next();
   } catch (error) {
     return next(new AppError("Failed to authenticate user", 401));
   }

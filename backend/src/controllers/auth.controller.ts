@@ -70,6 +70,7 @@ export const updateAuthProfileHandler = asyncHandler(async (req: Request, res: R
     annual_income?: number;
     gender?: string;
     preferred_language?: string;
+    profile_completed?: boolean;
   };
 
   const updatedUser = await updateUserProfile(user.id, body);
