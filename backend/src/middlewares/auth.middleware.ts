@@ -39,7 +39,6 @@ export async function requireAuth(req: Request, _res: Response, next: NextFuncti
         full_name: syncedUser.full_name ?? null,
         age: syncedUser.age ?? null,
         state: syncedUser.state ?? null,
-        district: syncedUser.district ?? null,
         category: syncedUser.category ?? null,
         gender: syncedUser.gender ?? null,
         education_level: syncedUser.education_level ?? null,

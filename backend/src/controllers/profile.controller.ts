@@ -30,7 +30,6 @@ export const updateOwnProfileHandler = asyncHandler(async (req: Request, res: Re
     full_name?: string;
     age?: number;
     state?: string;
-    district?: string;
     category?: string;
     dob?: string;
     education_level?: string;

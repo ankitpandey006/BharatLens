@@ -30,7 +30,6 @@ export default function ProfilePage() {
     { label: "Email", value: user?.email },
     { label: "Age", value: user?.age },
     { label: "State", value: user?.state },
-    { label: "District", value: user?.district },
     { label: "Category", value: user?.category },
     { label: "Education Level", value: user?.education_level },
     { label: "Occupation", value: user?.occupation },

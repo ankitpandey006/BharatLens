@@ -11,7 +11,6 @@ export interface UserProfile {
   role: UserRole;
   age?: number | null;
   state?: string | null;
-  district?: string | null;
   category?: string | null;
   dob?: string | null;
   education_level?: string | null;
@@ -44,7 +43,6 @@ export interface AuthRepository {
       full_name: string | null;
       age: number | null;
       state: string | null;
-      district: string | null;
       category: string | null;
       dob: string | null;
       education_level: string | null;
@@ -70,7 +68,6 @@ function calculateProfileCompleted(profile: Partial<UserProfile>): boolean {
   return Boolean(
     profile.age &&
       typeof profile.state === "string" && profile.state.trim().length > 0 &&
-      typeof profile.district === "string" && profile.district.trim().length > 0 &&
       typeof profile.education_level === "string" && profile.education_level.trim().length > 0 &&
       typeof profile.occupation === "string" && profile.occupation.trim().length > 0 &&
       typeof profile.user_type === "string" && profile.user_type.trim().length > 0,
@@ -86,7 +83,6 @@ function calculateProfileCompletion(profile: Partial<UserProfile> | UserProfile)
     "full_name",
     "age",
     "state",
-    "district",
     "category",
     "education_level",
     "occupation",
@@ -381,7 +377,6 @@ export async function findUserById(id: string): Promise<UserProfile | undefined>
     role: userRecord.role as "user" | "admin" | "moderator",
     age: (profileRecord?.age as number | null | undefined) ?? (userRecord.age as number | null | undefined) ?? null,
     state: profileRecord?.state ?? null,
-    district: (profileRecord?.district as string | null | undefined) ?? (userRecord.district as string | null | undefined) ?? null,
     category: profileRecord?.category ?? null,
     dob: profileRecord?.dob ?? null,
     education_level: profileRecord?.education_level ?? null,
@@ -423,7 +418,6 @@ export async function updateUserProfile(
     full_name: string | null;
     age: number | null;
     state: string | null;
-    district: string | null;
     category: string | null;
     dob: string | null;
     education_level: string | null;
@@ -446,7 +440,6 @@ export async function updateUserProfile(
     full_name: updates.full_name ?? existing.full_name,
     age: updates.age ?? existing.age,
     state: updates.state ?? existing.state,
-    district: updates.district ?? existing.district,
     category: updates.category ?? existing.category,
     dob: updates.dob ?? existing.dob,
     education_level: updates.education_level ?? existing.education_level,
@@ -476,9 +469,6 @@ export async function updateUserProfile(
   const optionalCommonUpdates: Record<string, unknown> = {};
   if (Object.prototype.hasOwnProperty.call(updates, "age")) {
     optionalCommonUpdates.age = updates.age ?? null;
-  }
-  if (Object.prototype.hasOwnProperty.call(updates, "district")) {
-    optionalCommonUpdates.district = updates.district ?? null;
   }
   if (Object.prototype.hasOwnProperty.call(updates, "annual_income")) {
     optionalCommonUpdates.annual_income = updates.annual_income ?? null;

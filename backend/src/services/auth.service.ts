@@ -30,7 +30,6 @@ export async function updateUserProfile(
     full_name: string;
     age: number;
     state: string;
-    district: string;
     category: string;
     dob: string;
     education_level: string;

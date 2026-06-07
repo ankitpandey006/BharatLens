@@ -15,7 +15,6 @@ declare global {
         first_name?: string | null;
         last_name?: string | null;
         state?: string | null;
-        district?: string | null;
         category?: string | null;
         gender?: string | null;
         education_level?: string | null;

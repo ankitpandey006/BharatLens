@@ -7,7 +7,6 @@ export async function getProfile(): Promise<Profile> {
     email: "user@example.com",
     locale: "en-IN",
     state: "Karnataka",
-    district: "Bangalore",
     educationLevel: "Undergraduate",
     incomeBracket: "Low",
     userType: "Student",

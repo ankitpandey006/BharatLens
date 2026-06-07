@@ -15,16 +15,42 @@ const ageOptions = [
 const genderOptions = ["Male", "Female", "Other", "Prefer not to say"];
 
 const stateOptions = [
-  "Delhi",
-  "Maharashtra",
-  "Karnataka",
-  "Tamil Nadu",
-  "Uttar Pradesh",
-  "West Bengal",
-  "Gujarat",
-  "Rajasthan",
-  "Madhya Pradesh",
+  "Andhra Pradesh",
+  "Arunachal Pradesh",
+  "Assam",
   "Bihar",
+  "Chhattisgarh",
+  "Goa",
+  "Gujarat",
+  "Haryana",
+  "Himachal Pradesh",
+  "Jharkhand",
+  "Karnataka",
+  "Kerala",
+  "Madhya Pradesh",
+  "Maharashtra",
+  "Manipur",
+  "Meghalaya",
+  "Mizoram",
+  "Nagaland",
+  "Odisha",
+  "Punjab",
+  "Rajasthan",
+  "Sikkim",
+  "Tamil Nadu",
+  "Telangana",
+  "Tripura",
+  "Uttar Pradesh",
+  "Uttarakhand",
+  "West Bengal",
+  "Delhi",
+  "Jammu and Kashmir",
+  "Ladakh",
+  "Puducherry",
+  "Chandigarh",
+  "Andaman and Nicobar Islands",
+  "Dadra and Nagar Haveli and Daman and Diu",
+  "Lakshadweep",
 ];
 
 const userTypeOptions = [
@@ -94,11 +120,11 @@ const interestOptions = [
 ];
 
 const steps = [
-  { title: "Your details", description: "Fill in the basics for better matches." },
-  { title: "Your goal", description: "Pick the main way BharatLens can help you." },
-  { title: "Education & work", description: "Choose the best options for your profile." },
-  { title: "Income & category", description: "This helps show benefits that fit you." },
-  { title: "Interests & language", description: "Select what matters and your preferred language." },
+  { title: "General", description: "Basic details for personalization." },
+  { title: "Goal", description: "Tell us what you are looking for." },
+  { title: "Education", description: "Education and work information." },
+  { title: "Benefits", description: "Income and category details." },
+  { title: "Preferences", description: "Interests and language." },
 ];
 
 const initialFormState = {
@@ -106,7 +132,6 @@ const initialFormState = {
   ageGroup: "",
   gender: "",
   state: "",
-  district: "",
   user_type: "",
   education_level: "",
   occupation: "",
@@ -118,27 +143,36 @@ const initialFormState = {
 
 function buildValidationMessage(step: number, form: typeof initialFormState) {
   if (step === 0) {
-    if (!form.full_name.trim()) return "A full name helps personalize your feed.";
-    if (!form.ageGroup) return "Choose an age group.";
-    if (!form.gender) return "Choose a gender option.";
-    if (!form.state) return "Select your state.";
-    if (!form.district.trim()) return "Enter your district.";
+    if (!form.full_name.trim()) return "Please enter your full name.";
+    if (!form.ageGroup) return "Please choose your age group.";
+    if (!form.gender) return "Please choose your gender.";
+    if (!form.state) return "Please select your state.";
   }
-  if (step === 1 && !form.user_type) return "Pick one goal so we can recommend the best opportunities.";
+
+  if (step === 1 && !form.user_type) {
+    return "Please choose your main goal.";
+  }
+
   if (step === 2) {
-    if (!form.education_level) return "Choose your education level.";
-    if (!form.occupation) return "Choose your occupation.";
+    if (!form.education_level) return "Please choose your education level.";
+    if (!form.occupation) return "Please choose your occupation.";
   }
+
   if (step === 3) {
-    if (!form.income_range) return "Select your income range.";
-    if (!form.category) return "Select your category.";
+    if (!form.income_range) return "Please select your income range.";
+    if (!form.category) return "Please select your category.";
   }
-  if (step === 4 && !form.preferred_language) return "Choose your preferred language.";
+
+  if (step === 4 && !form.preferred_language) {
+    return "Please choose your preferred language.";
+  }
+
   return "";
 }
 
 export default function ProfileSetupWizard() {
   const router = useRouter();
+
   const [stepIndex, setStepIndex] = useState(0);
   const [formData, setFormData] = useState(initialFormState);
   const [submitting, setSubmitting] = useState(false);
@@ -151,9 +185,9 @@ export default function ProfileSetupWizard() {
     const loadProfile = async () => {
       try {
         const user = await getCurrentUser();
+
         if (canceled) return;
 
-        // If profile is already complete, redirect to dashboard
         if (user.profile_completed === true) {
           router.replace("/dashboard");
           return;
@@ -164,20 +198,21 @@ export default function ProfileSetupWizard() {
           full_name: user.full_name ?? current.full_name,
           gender: user.gender ?? current.gender,
           state: user.state ?? current.state,
-          district: user.district ?? current.district,
           education_level: user.education_level ?? current.education_level,
           occupation: user.occupation ?? current.occupation,
           income_range: user.income_range ?? current.income_range,
           category: user.category ?? current.category,
           user_type: user.user_type ?? current.user_type,
-          preferred_language: user.preferred_language ?? current.preferred_language,
+          preferred_language:
+            user.preferred_language ?? current.preferred_language,
           ageGroup:
             user.age != null
-              ? ageOptions.find((option) => option.value === user.age)?.id || current.ageGroup
+              ? ageOptions.find((option) => option.value === user.age)?.id ||
+                current.ageGroup
               : current.ageGroup,
         }));
       } catch {
-        // Continue with defaults if profile fetch fails.
+        // Continue with defaults.
       } finally {
         if (!canceled) {
           setUserReady(true);
@@ -203,10 +238,11 @@ export default function ProfileSetupWizard() {
 
   const handleToggleInterest = (value: string) => {
     setFormData((current) => {
-      const already = current.interests.includes(value);
+      const alreadySelected = current.interests.includes(value);
+
       return {
         ...current,
-        interests: already
+        interests: alreadySelected
           ? current.interests.filter((item) => item !== value)
           : [...current.interests, value],
       };
@@ -215,13 +251,14 @@ export default function ProfileSetupWizard() {
 
   const handleNext = () => {
     setMessage(null);
+
     if (!canContinue) {
       setMessage(stepError);
       return;
     }
 
     if (stepIndex < steps.length - 1) {
-      setStepIndex(stepIndex + 1);
+      setStepIndex((current) => current + 1);
       return;
     }
 
@@ -238,24 +275,24 @@ export default function ProfileSetupWizard() {
     setSubmitting(true);
 
     try {
-      const ageMatch = ageOptions.find((option) => option.id === formData.ageGroup);
-      
-      // Map income_range to annual_income numeric value
+      const ageMatch = ageOptions.find(
+        (option) => option.id === formData.ageGroup,
+      );
+
       const incomeRangeMap: Record<string, number> = {
-        "Below 1 Lakh": 500000,
+        "Below 1 Lakh": 50000,
         "1-3 Lakh": 200000,
         "3-5 Lakh": 400000,
         "5-8 Lakh": 650000,
         "Above 8 Lakh": 1000000,
         "Prefer not to say": 0,
       };
-      
+
       const payload = {
         full_name: formData.full_name.trim(),
         age: ageMatch?.value,
         gender: formData.gender,
         state: formData.state,
-        district: formData.district.trim(),
         education_level: formData.education_level,
         occupation: formData.occupation,
         income_range: formData.income_range,
@@ -265,24 +302,20 @@ export default function ProfileSetupWizard() {
         preferred_language: formData.preferred_language,
       };
 
-      console.log("Submitting profile", payload);
-      const updatedUser = await updateProfile(payload);
-      console.log("Profile update response", updatedUser);
+      await updateProfile(payload);
 
-      // Refetch the user to verify profile completion
       const currentUser = await getCurrentUser();
-      console.log("Current user after save", currentUser);
 
       if (currentUser?.profile_completed === true) {
         router.replace("/dashboard");
         return;
       }
 
-      // If profile is still incomplete, allow user to continue filling it
-      setMessage("Profile saved. Some fields are still incomplete. Please continue filling them to complete your profile.");
+      setMessage(
+        "Profile saved. Some required fields may still be incomplete. Please check once again.",
+      );
       setSubmitting(false);
     } catch (error) {
-      console.error("Profile save failed", error);
       setMessage(
         error instanceof Error
           ? error.message
@@ -304,260 +337,350 @@ export default function ProfileSetupWizard() {
   }
 
   return (
-    <div className="rounded-3xl border border-[#E5E7EB] bg-white p-5 shadow-xl shadow-[#1A3C6E]/10 sm:p-8">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#3B82F6]">
-            Profile setup
+    <div className="overflow-hidden rounded-[2rem] border border-[#E5E7EB] bg-white shadow-2xl shadow-[#1A3C6E]/10">
+      <div className="bg-gradient-to-br from-[#1A3C6E] via-[#245395] to-[#3B82F6] px-5 py-7 text-white sm:px-8">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-white/75">
+              BharatLens Profile
+            </p>
+            <h1 className="mt-3 text-3xl font-bold">
+              Setup your profile easily
+            </h1>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-white/75">
+              Complete these simple steps to get better schemes, scholarships,
+              jobs, exams and benefit recommendations.
+            </p>
+          </div>
+
+          <span className="w-fit rounded-full bg-white/15 px-4 py-2 text-sm font-semibold text-white ring-1 ring-white/20">
+            {progress}% complete
+          </span>
+        </div>
+
+        <div className="mt-8">
+          <div className="flex items-start justify-between">
+            {steps.map((step, index) => {
+              const active = index === stepIndex;
+              const completed = index < stepIndex;
+
+              return (
+                <div key={step.title} className="flex flex-1 items-start">
+                  <div className="flex min-w-0 flex-col items-center text-center">
+                    <div
+                      className={`flex h-11 w-11 items-center justify-center rounded-full border-2 text-sm font-bold transition ${
+                        active || completed
+                          ? "border-white bg-white text-[#1A3C6E]"
+                          : "border-white/40 bg-transparent text-white/60"
+                      }`}
+                    >
+                      {completed ? "✓" : index + 1}
+                    </div>
+
+                    <p
+                      className={`mt-2 hidden max-w-24 text-xs font-semibold sm:block ${
+                        active ? "text-white" : "text-white/60"
+                      }`}
+                    >
+                      {step.title}
+                    </p>
+                  </div>
+
+                  {index < steps.length - 1 ? (
+                    <div
+                      className={`mx-2 mt-5 h-[3px] flex-1 rounded-full ${
+                        index < stepIndex ? "bg-white" : "bg-white/25"
+                      }`}
+                    />
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      <div className="p-5 sm:p-8">
+        <div className="rounded-3xl bg-[#F5F3EE] p-5">
+          <p className="text-sm font-semibold text-[#3B82F6]">
+            Step {stepIndex + 1} of {steps.length}
           </p>
-          <h1 className="mt-3 text-3xl font-bold text-[#1A3C6E]">{currentStep.title}</h1>
-          <p className="mt-2 text-sm leading-6 text-[#111827]/65">{currentStep.description}</p>
+          <h2 className="mt-2 text-2xl font-bold text-[#1A3C6E]">
+            {currentStep.title}
+          </h2>
+          <p className="mt-2 text-sm leading-6 text-[#111827]/65">
+            {currentStep.description}
+          </p>
         </div>
-        <span className="w-fit rounded-full bg-[#F5F3EE] px-4 py-2 text-sm font-semibold text-[#1A3C6E]">
-          Step {stepIndex + 1} of {steps.length}
-        </span>
-      </div>
 
-      <div className="mt-7">
-        <div className="mb-2 flex items-center justify-between text-xs font-semibold text-[#111827]/55">
-          <span>Progress</span>
-          <span>{progress}%</span>
-        </div>
-        <div className="h-3 overflow-hidden rounded-full bg-[#F5F3EE]">
-          <div
-            className="h-3 rounded-full bg-[#1A3C6E] transition-[width] duration-200 ease-linear"
-            style={{ width: `${progress}%` }}
-          />
-        </div>
-      </div>
-
-      <div className="mt-8 space-y-6">
-        {stepIndex === 0 && (
-          <div className="grid gap-4 sm:grid-cols-2">
-            <label className="block">
-              <span className="text-sm font-medium text-[#111827]">Full name</span>
-              <input
-                value={formData.full_name}
-                onChange={(event) => handleSelect("full_name", event.target.value)}
-                placeholder="Your full name"
-                className="mt-2 w-full rounded-2xl border border-[#E5E7EB] px-4 py-3 text-sm outline-none transition focus:border-[#3B82F6] focus:ring-2 focus:ring-[#3B82F6]/20"
-              />
-            </label>
-
-            <label className="block">
-              <span className="text-sm font-medium text-[#111827]">Age group</span>
-              <select
-                value={formData.ageGroup}
-                onChange={(event) => handleSelect("ageGroup", event.target.value)}
-                className="mt-2 w-full rounded-2xl border border-[#E5E7EB] bg-white px-4 py-3 text-sm outline-none transition focus:border-[#3B82F6] focus:ring-2 focus:ring-[#3B82F6]/20"
-              >
-                <option value="">Select age group</option>
-                {ageOptions.map((option) => (
-                  <option key={option.id} value={option.id}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="block">
-              <span className="text-sm font-medium text-[#111827]">Gender</span>
-              <select
-                value={formData.gender}
-                onChange={(event) => handleSelect("gender", event.target.value)}
-                className="mt-2 w-full rounded-2xl border border-[#E5E7EB] bg-white px-4 py-3 text-sm outline-none transition focus:border-[#3B82F6] focus:ring-2 focus:ring-[#3B82F6]/20"
-              >
-                <option value="">Select gender</option>
-                {genderOptions.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="block">
-              <span className="text-sm font-medium text-[#111827]">Preferred state</span>
-              <select
-                value={formData.state}
-                onChange={(event) => handleSelect("state", event.target.value)}
-                className="mt-2 w-full rounded-2xl border border-[#E5E7EB] bg-white px-4 py-3 text-sm outline-none transition focus:border-[#3B82F6] focus:ring-2 focus:ring-[#3B82F6]/20"
-              >
-                <option value="">Select your state</option>
-                {stateOptions.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="block sm:col-span-2">
-              <span className="text-sm font-medium text-[#111827]">District</span>
-              <input
-                value={formData.district}
-                onChange={(event) => handleSelect("district", event.target.value)}
-                placeholder="Enter your district"
-                className="mt-2 w-full rounded-2xl border border-[#E5E7EB] px-4 py-3 text-sm outline-none transition focus:border-[#3B82F6] focus:ring-2 focus:ring-[#3B82F6]/20"
-              />
-            </label>
-          </div>
-        )}
-
-        {stepIndex === 1 && (
-          <div className="grid gap-4 sm:grid-cols-2">
-            {userTypeOptions.map((option) => (
-              <button
-                key={option}
-                type="button"
-                onClick={() => handleSelect("user_type", option)}
-                className={`rounded-3xl border p-5 text-left transition hover:border-[#3B82F6] ${
-                  formData.user_type === option
-                    ? "border-[#1A3C6E] bg-[#E5F0FF] text-[#1A3C6E]"
-                    : "border-[#E5E7EB] bg-white text-[#111827]"
-                }`}
-              >
-                <span className="block text-base font-semibold">{option}</span>
-                <span className="mt-2 block text-sm text-[#6B7280]">
-                  {option === "Other" ? "Something else?" : "Choose this if it fits your goal."}
+        <div className="mt-7 space-y-6">
+          {stepIndex === 0 && (
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="block">
+                <span className="text-sm font-medium text-[#111827]">
+                  Full name
                 </span>
-              </button>
-            ))}
-          </div>
-        )}
+                <input
+                  value={formData.full_name}
+                  onChange={(event) =>
+                    handleSelect("full_name", event.target.value)
+                  }
+                  placeholder="Enter your full name"
+                  className="mt-2 w-full rounded-2xl border border-[#E5E7EB] px-4 py-3 text-sm outline-none transition focus:border-[#3B82F6] focus:ring-2 focus:ring-[#3B82F6]/20"
+                />
+              </label>
 
-        {stepIndex === 2 && (
-          <div className="grid gap-4 sm:grid-cols-2">
-            <label className="block">
-              <span className="text-sm font-medium text-[#111827]">Education level</span>
-              <select
-                value={formData.education_level}
-                onChange={(event) => handleSelect("education_level", event.target.value)}
-                className="mt-2 w-full rounded-2xl border border-[#E5E7EB] bg-white px-4 py-3 text-sm outline-none transition focus:border-[#3B82F6] focus:ring-2 focus:ring-[#3B82F6]/20"
-              >
-                <option value="">Select education level</option>
-                {educationOptions.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-            </label>
+              <label className="block">
+                <span className="text-sm font-medium text-[#111827]">
+                  Age group
+                </span>
+                <select
+                  value={formData.ageGroup}
+                  onChange={(event) =>
+                    handleSelect("ageGroup", event.target.value)
+                  }
+                  className="mt-2 w-full rounded-2xl border border-[#E5E7EB] bg-white px-4 py-3 text-sm outline-none transition focus:border-[#3B82F6] focus:ring-2 focus:ring-[#3B82F6]/20"
+                >
+                  <option value="">Select age group</option>
+                  {ageOptions.map((option) => (
+                    <option key={option.id} value={option.id}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
 
-            <label className="block">
-              <span className="text-sm font-medium text-[#111827]">Occupation</span>
-              <select
-                value={formData.occupation}
-                onChange={(event) => handleSelect("occupation", event.target.value)}
-                className="mt-2 w-full rounded-2xl border border-[#E5E7EB] bg-white px-4 py-3 text-sm outline-none transition focus:border-[#3B82F6] focus:ring-2 focus:ring-[#3B82F6]/20"
-              >
-                <option value="">Select occupation</option>
-                {occupationOptions.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-        )}
+              <label className="block">
+                <span className="text-sm font-medium text-[#111827]">
+                  Gender
+                </span>
+                <select
+                  value={formData.gender}
+                  onChange={(event) =>
+                    handleSelect("gender", event.target.value)
+                  }
+                  className="mt-2 w-full rounded-2xl border border-[#E5E7EB] bg-white px-4 py-3 text-sm outline-none transition focus:border-[#3B82F6] focus:ring-2 focus:ring-[#3B82F6]/20"
+                >
+                  <option value="">Select gender</option>
+                  {genderOptions.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+              </label>
 
-        {stepIndex === 3 && (
-          <div className="grid gap-4 sm:grid-cols-2">
-            <label className="block">
-              <span className="text-sm font-medium text-[#111827]">Annual income</span>
-              <select
-                value={formData.income_range}
-                onChange={(event) => handleSelect("income_range", event.target.value)}
-                className="mt-2 w-full rounded-2xl border border-[#E5E7EB] bg-white px-4 py-3 text-sm outline-none transition focus:border-[#3B82F6] focus:ring-2 focus:ring-[#3B82F6]/20"
-              >
-                <option value="">Select income range</option>
-                {incomeOptions.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-            </label>
+              <label className="block">
+                <span className="text-sm font-medium text-[#111827]">
+                  State
+                </span>
+                <select
+                  value={formData.state}
+                  onChange={(event) =>
+                    handleSelect("state", event.target.value)
+                  }
+                  className="mt-2 w-full rounded-2xl border border-[#E5E7EB] bg-white px-4 py-3 text-sm outline-none transition focus:border-[#3B82F6] focus:ring-2 focus:ring-[#3B82F6]/20"
+                >
+                  <option value="">Select your state</option>
+                  {stateOptions.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+          )}
 
-            <label className="block">
-              <span className="text-sm font-medium text-[#111827]">Category</span>
-              <select
-                value={formData.category}
-                onChange={(event) => handleSelect("category", event.target.value)}
-                className="mt-2 w-full rounded-2xl border border-[#E5E7EB] bg-white px-4 py-3 text-sm outline-none transition focus:border-[#3B82F6] focus:ring-2 focus:ring-[#3B82F6]/20"
-              >
-                <option value="">Select category</option>
-                {categoryOptions.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-        )}
-
-        {stepIndex === 4 && (
-          <div className="grid gap-6">
-            <div className="grid gap-3 sm:grid-cols-2">
-              {interestOptions.map((option) => (
+          {stepIndex === 1 && (
+            <div className="grid gap-4 sm:grid-cols-2">
+              {userTypeOptions.map((option) => (
                 <button
                   key={option}
                   type="button"
-                  onClick={() => handleToggleInterest(option)}
-                  className={`rounded-3xl border p-4 text-left transition hover:border-[#3B82F6] ${
-                    formData.interests.includes(option)
-                      ? "border-[#1A3C6E] bg-[#EFF6FF] text-[#1A3C6E]"
+                  onClick={() => handleSelect("user_type", option)}
+                  className={`rounded-3xl border p-5 text-left transition hover:-translate-y-0.5 hover:border-[#3B82F6] hover:shadow-lg ${
+                    formData.user_type === option
+                      ? "border-[#1A3C6E] bg-[#E5F0FF] text-[#1A3C6E] shadow-md"
                       : "border-[#E5E7EB] bg-white text-[#111827]"
                   }`}
                 >
-                  {option}
+                  <span className="block text-base font-semibold">
+                    {option}
+                  </span>
+                  <span className="mt-2 block text-sm text-[#6B7280]">
+                    {option === "Other"
+                      ? "Choose this for other needs."
+                      : "Choose this if it matches your goal."}
+                  </span>
                 </button>
               ))}
             </div>
+          )}
 
-            <label className="block">
-              <span className="text-sm font-medium text-[#111827]">Language</span>
-              <select
-                value={formData.preferred_language}
-                onChange={(event) => handleSelect("preferred_language", event.target.value)}
-                className="mt-2 w-full rounded-2xl border border-[#E5E7EB] bg-white px-4 py-3 text-sm outline-none transition focus:border-[#3B82F6] focus:ring-2 focus:ring-[#3B82F6]/20"
-              >
-                {languageOptions.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-        )}
-      </div>
+          {stepIndex === 2 && (
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="block">
+                <span className="text-sm font-medium text-[#111827]">
+                  Education level
+                </span>
+                <select
+                  value={formData.education_level}
+                  onChange={(event) =>
+                    handleSelect("education_level", event.target.value)
+                  }
+                  className="mt-2 w-full rounded-2xl border border-[#E5E7EB] bg-white px-4 py-3 text-sm outline-none transition focus:border-[#3B82F6] focus:ring-2 focus:ring-[#3B82F6]/20"
+                >
+                  <option value="">Select education level</option>
+                  {educationOptions.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+              </label>
 
-      {message ? (
-        <div className="mt-6 rounded-2xl border border-[#F5F3EE] bg-[#FEF3C7] px-4 py-3 text-sm text-[#92400E]">
-          {message}
+              <label className="block">
+                <span className="text-sm font-medium text-[#111827]">
+                  Occupation
+                </span>
+                <select
+                  value={formData.occupation}
+                  onChange={(event) =>
+                    handleSelect("occupation", event.target.value)
+                  }
+                  className="mt-2 w-full rounded-2xl border border-[#E5E7EB] bg-white px-4 py-3 text-sm outline-none transition focus:border-[#3B82F6] focus:ring-2 focus:ring-[#3B82F6]/20"
+                >
+                  <option value="">Select occupation</option>
+                  {occupationOptions.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+          )}
+
+          {stepIndex === 3 && (
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="block">
+                <span className="text-sm font-medium text-[#111827]">
+                  Annual income
+                </span>
+                <select
+                  value={formData.income_range}
+                  onChange={(event) =>
+                    handleSelect("income_range", event.target.value)
+                  }
+                  className="mt-2 w-full rounded-2xl border border-[#E5E7EB] bg-white px-4 py-3 text-sm outline-none transition focus:border-[#3B82F6] focus:ring-2 focus:ring-[#3B82F6]/20"
+                >
+                  <option value="">Select income range</option>
+                  {incomeOptions.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="block">
+                <span className="text-sm font-medium text-[#111827]">
+                  Category
+                </span>
+                <select
+                  value={formData.category}
+                  onChange={(event) =>
+                    handleSelect("category", event.target.value)
+                  }
+                  className="mt-2 w-full rounded-2xl border border-[#E5E7EB] bg-white px-4 py-3 text-sm outline-none transition focus:border-[#3B82F6] focus:ring-2 focus:ring-[#3B82F6]/20"
+                >
+                  <option value="">Select category</option>
+                  {categoryOptions.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+          )}
+
+          {stepIndex === 4 && (
+            <div className="grid gap-6">
+              <div>
+                <p className="mb-3 text-sm font-medium text-[#111827]">
+                  Select your interests
+                </p>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {interestOptions.map((option) => (
+                    <button
+                      key={option}
+                      type="button"
+                      onClick={() => handleToggleInterest(option)}
+                      className={`rounded-3xl border p-4 text-left text-sm font-semibold transition hover:-translate-y-0.5 hover:border-[#3B82F6] hover:shadow-md ${
+                        formData.interests.includes(option)
+                          ? "border-[#1A3C6E] bg-[#EFF6FF] text-[#1A3C6E]"
+                          : "border-[#E5E7EB] bg-white text-[#111827]"
+                      }`}
+                    >
+                      {option}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <label className="block">
+                <span className="text-sm font-medium text-[#111827]">
+                  Preferred language
+                </span>
+                <select
+                  value={formData.preferred_language}
+                  onChange={(event) =>
+                    handleSelect("preferred_language", event.target.value)
+                  }
+                  className="mt-2 w-full rounded-2xl border border-[#E5E7EB] bg-white px-4 py-3 text-sm outline-none transition focus:border-[#3B82F6] focus:ring-2 focus:ring-[#3B82F6]/20"
+                >
+                  {languageOptions.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+          )}
         </div>
-      ) : null}
 
-      <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-between">
-        <button
-          type="button"
-          onClick={handleBack}
-          disabled={stepIndex === 0 || submitting}
-          className="rounded-full border border-[#E5E7EB] bg-white px-5 py-3 text-sm font-semibold text-[#111827] transition hover:border-[#1A3C6E] disabled:cursor-not-allowed disabled:opacity-45"
-        >
-          Back
-        </button>
-        <button
-          type="button"
-          onClick={handleNext}
-          disabled={submitting}
-          className="rounded-full bg-[#1A3C6E] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[#3B82F6] disabled:cursor-not-allowed disabled:bg-[#9BB6E5]"
-        >
-          {submitting ? "Saving..." : stepIndex === steps.length - 1 ? "Finish setup" : "Continue"}
-        </button>
+        {message ? (
+          <div className="mt-6 rounded-2xl border border-[#F59E0B]/20 bg-[#FEF3C7] px-4 py-3 text-sm font-medium text-[#92400E]">
+            {message}
+          </div>
+        ) : null}
+
+        <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-between">
+          <button
+            type="button"
+            onClick={handleBack}
+            disabled={stepIndex === 0 || submitting}
+            className="rounded-full border border-[#E5E7EB] bg-white px-5 py-3 text-sm font-semibold text-[#111827] transition hover:border-[#1A3C6E] disabled:cursor-not-allowed disabled:opacity-45"
+          >
+            Back
+          </button>
+
+          <button
+            type="button"
+            onClick={handleNext}
+            disabled={submitting}
+            className="rounded-full bg-[#1A3C6E] px-7 py-3 text-sm font-semibold text-white transition hover:bg-[#3B82F6] disabled:cursor-not-allowed disabled:bg-[#9BB6E5]"
+          >
+            {submitting
+              ? "Saving..."
+              : stepIndex === steps.length - 1
+                ? "Finish setup"
+                : "Continue"}
+          </button>
+        </div>
       </div>
     </div>
   );

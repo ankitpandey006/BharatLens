@@ -14,7 +14,6 @@ export async function modifyProfile(
       | "age"
       | "gender"
       | "state"
-      | "district"
       | "education_level"
       | "occupation"
       | "annual_income"

@@ -5,7 +5,6 @@ const profileFields = {
   age: z.coerce.number().int().positive().max(120).optional(),
   gender: z.string().trim().min(1).optional(),
   state: z.string().trim().min(1).optional(),
-  district: z.string().trim().min(1).optional(),
   education_level: z.string().trim().min(1).optional(),
   occupation: z.string().trim().min(1).optional(),
   annual_income: z.coerce.number().nonnegative().optional(),

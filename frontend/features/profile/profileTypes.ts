@@ -4,7 +4,6 @@ export interface Profile {
   email?: string;
   locale?: string;
   state?: string;
-  district?: string;
   educationLevel?: string;
   incomeBracket?: string;
   userType?: string;

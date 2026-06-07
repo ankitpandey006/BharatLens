@@ -60,7 +60,6 @@ export const updateAuthProfileHandler = asyncHandler(async (req: Request, res: R
     full_name?: string;
     age?: number;
     state?: string;
-    district?: string;
     category?: string;
     dob?: string;
     education_level?: string;
