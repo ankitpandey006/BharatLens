@@ -3,7 +3,7 @@
  * Each service handles a specific content type
  */
 
-import { apiClient } from "./client";
+import { apiClient, type ApiResponse } from "./client";
 
 export interface PaginatedResponse<T> {
   items: T[];
@@ -26,6 +26,9 @@ export interface Scheme {
   deadline?: string;
   status?: string;
   state?: string;
+  official_url?: string;
+  apply_url?: string;
+  source_url?: string;
   created_at?: string;
   updated_at?: string;
 }
@@ -41,6 +44,9 @@ export interface Scholarship {
   deadline?: string;
   status?: string;
   state?: string;
+  official_url?: string;
+  apply_url?: string;
+  source_url?: string;
   created_at?: string;
   updated_at?: string;
 }
@@ -56,6 +62,9 @@ export interface Job {
   vacancies?: number;
   deadline?: string;
   status?: string;
+  official_url?: string;
+  apply_url?: string;
+  source_url?: string;
   created_at?: string;
   updated_at?: string;
 }
@@ -70,6 +79,9 @@ export interface Exam {
   examDate?: string;
   applicationDeadline?: string;
   status?: string;
+  official_url?: string;
+  apply_url?: string;
+  source_url?: string;
   created_at?: string;
   updated_at?: string;
 }
@@ -83,6 +95,145 @@ export interface SavedItem {
   item_data?: Scheme | Scholarship | Job | Exam;
   user_id?: string;
   created_at?: string;
+}
+
+function normalizeStringField(value: unknown): string | undefined {
+  return typeof value === "string" ? value : undefined;
+}
+
+function normalizeNumberField(value: unknown): number | undefined {
+  return typeof value === "number" ? value : undefined;
+}
+
+function normalizeExam(raw: unknown): Exam {
+  const data = raw as Record<string, unknown>;
+  return {
+    id: normalizeStringField(data.id) ?? "",
+    title: normalizeStringField(data.title) ?? "",
+    category: normalizeStringField(data.category) ?? "",
+    conductingBody:
+      normalizeStringField(data.conducting_body) ??
+      normalizeStringField(data.conductingBody) ??
+      "",
+    description: normalizeStringField(data.description),
+    eligibility: normalizeStringField(data.eligibility) ?? "",
+    examDate:
+      normalizeStringField(data.exam_date) ??
+      normalizeStringField(data.examDate) ??
+      undefined,
+    applicationDeadline:
+      normalizeStringField(data.application_deadline) ??
+      normalizeStringField(data.application_end_date) ??
+      normalizeStringField(data.applicationDeadline) ??
+      undefined,
+    status: normalizeStringField(data.status),
+    official_url: normalizeStringField(data.official_url),
+    apply_url: normalizeStringField(data.apply_url),
+    source_url: normalizeStringField(data.source_url),
+    created_at: normalizeStringField(data.created_at),
+    updated_at: normalizeStringField(data.updated_at),
+  };
+}
+
+function normalizeScheme(raw: unknown): Scheme {
+  const data = raw as Record<string, unknown>;
+  return {
+    id: normalizeStringField(data.id) ?? "",
+    title: normalizeStringField(data.title) ?? "",
+    category: normalizeStringField(data.category) ?? "",
+    provider: normalizeStringField(data.provider) ?? "",
+    description: normalizeStringField(data.description),
+    eligibility: normalizeStringField(data.eligibility) ?? "",
+    benefit: normalizeStringField(data.benefit) ?? "",
+    deadline:
+      normalizeStringField(data.deadline) ??
+      normalizeStringField(data.application_end_date) ??
+      normalizeStringField(data.applicationDeadline) ??
+      undefined,
+    status: normalizeStringField(data.status),
+    state: normalizeStringField(data.state),
+    official_url: normalizeStringField(data.official_url),
+    apply_url: normalizeStringField(data.apply_url),
+    source_url: normalizeStringField(data.source_url),
+    created_at: normalizeStringField(data.created_at),
+    updated_at: normalizeStringField(data.updated_at),
+  };
+}
+
+function normalizeScholarship(raw: unknown): Scholarship {
+  const data = raw as Record<string, unknown>;
+  return {
+    id: normalizeStringField(data.id) ?? "",
+    title: normalizeStringField(data.title) ?? "",
+    category: normalizeStringField(data.category) ?? "",
+    provider: normalizeStringField(data.provider) ?? "",
+    description: normalizeStringField(data.description),
+    eligibility: normalizeStringField(data.eligibility) ?? "",
+    amount: normalizeStringField(data.amount),
+    deadline:
+      normalizeStringField(data.deadline) ??
+      normalizeStringField(data.application_end_date) ??
+      normalizeStringField(data.applicationDeadline) ??
+      undefined,
+    status: normalizeStringField(data.status),
+    state: normalizeStringField(data.state),
+    official_url: normalizeStringField(data.official_url),
+    apply_url: normalizeStringField(data.apply_url),
+    source_url: normalizeStringField(data.source_url),
+    created_at: normalizeStringField(data.created_at),
+    updated_at: normalizeStringField(data.updated_at),
+  };
+}
+
+function normalizeJob(raw: unknown): Job {
+  const data = raw as Record<string, unknown>;
+  return {
+    id: normalizeStringField(data.id) ?? "",
+    title: normalizeStringField(data.title) ?? "",
+    category: normalizeStringField(data.category),
+    organization: normalizeStringField(data.organization) ?? "",
+    description: normalizeStringField(data.description),
+    qualification: normalizeStringField(data.qualification) ?? "",
+    location:
+      normalizeStringField(data.location) ??
+      normalizeStringField(data.state) ??
+      undefined,
+    vacancies: normalizeNumberField(data.vacancies),
+    deadline:
+      normalizeStringField(data.deadline) ??
+      normalizeStringField(data.application_end_date) ??
+      normalizeStringField(data.applicationDeadline) ??
+      undefined,
+    status: normalizeStringField(data.status),
+    official_url: normalizeStringField(data.official_url),
+    apply_url: normalizeStringField(data.apply_url),
+    source_url: normalizeStringField(data.source_url),
+    created_at: normalizeStringField(data.created_at),
+    updated_at: normalizeStringField(data.updated_at),
+  };
+}
+
+function normalizeSavedItem(raw: unknown): SavedItem {
+  const data = raw as Record<string, unknown>;
+  const itemData = data.item_data as Record<string, unknown> | undefined;
+  const itemType = normalizeStringField(data.item_type) as ContentType | undefined;
+
+  const normalizedData = itemType === "exam"
+    ? normalizeExam(itemData ?? {})
+    : itemType === "job"
+    ? normalizeJob(itemData ?? {})
+    : itemType === "scholarship"
+    ? normalizeScholarship(itemData ?? {})
+    : normalizeScheme(itemData ?? {});
+
+  return {
+    id: normalizeStringField(data.id) ?? "",
+    item_id: normalizeStringField(data.item_id) ?? "",
+    item_type: itemType ?? "scheme",
+    item_data: normalizedData,
+    user_id: normalizeStringField(data.user_id),
+    created_at: normalizeStringField(data.created_at),
+  };
 }
 
 export interface Notification {
@@ -124,20 +275,17 @@ export async function fetchSchemes(params?: {
   if (params?.sortBy) queryParams.append("sortBy", params.sortBy);
   if (params?.sortOrder) queryParams.append("sortOrder", params.sortOrder);
 
-  const response = await apiClient<{
-    data: Scheme[];
-    pagination: {
-      page: number;
-      limit: number;
-      total: number;
-      totalPages: number;
-      hasNextPage: boolean;
-      hasPreviousPage: boolean;
-    };
-  }>(`/schemes?${queryParams.toString()}`);
+  const response = await apiClient<ApiResponse<Scheme[]>>(
+    `/schemes?${queryParams.toString()}`,
+    { rawResponse: true },
+  );
+
+  const items = Array.isArray(response.data)
+    ? response.data.map((item) => normalizeScheme(item as unknown))
+    : [];
 
   return {
-    items: response.data || [],
+    items,
     total: response.pagination?.total || 0,
     page: response.pagination?.page || 1,
     limit: response.pagination?.limit || 10,
@@ -148,7 +296,8 @@ export async function fetchSchemes(params?: {
 }
 
 export async function fetchSchemeById(id: string): Promise<Scheme> {
-  return apiClient(`/schemes/${id}`);
+  const raw = await apiClient<Record<string, unknown>>(`/schemes/${id}`);
+  return normalizeScheme(raw);
 }
 
 // Scholarships API
@@ -170,20 +319,17 @@ export async function fetchScholarships(params?: {
   if (params?.sortBy) queryParams.append("sortBy", params.sortBy);
   if (params?.sortOrder) queryParams.append("sortOrder", params.sortOrder);
 
-  const response = await apiClient<{
-    data: Scholarship[];
-    pagination: {
-      page: number;
-      limit: number;
-      total: number;
-      totalPages: number;
-      hasNextPage: boolean;
-      hasPreviousPage: boolean;
-    };
-  }>(`/scholarships?${queryParams.toString()}`);
+  const response = await apiClient<ApiResponse<Scholarship[]>>(
+    `/scholarships?${queryParams.toString()}`,
+    { rawResponse: true },
+  );
+
+  const items = Array.isArray(response.data)
+    ? response.data.map((item) => normalizeScholarship(item as unknown))
+    : [];
 
   return {
-    items: response.data || [],
+    items,
     total: response.pagination?.total || 0,
     page: response.pagination?.page || 1,
     limit: response.pagination?.limit || 10,
@@ -194,7 +340,8 @@ export async function fetchScholarships(params?: {
 }
 
 export async function fetchScholarshipById(id: string): Promise<Scholarship> {
-  return apiClient(`/scholarships/${id}`);
+  const raw = await apiClient<Record<string, unknown>>(`/scholarships/${id}`);
+  return normalizeScholarship(raw);
 }
 
 // Jobs API
@@ -216,20 +363,17 @@ export async function fetchJobs(params?: {
   if (params?.sortBy) queryParams.append("sortBy", params.sortBy);
   if (params?.sortOrder) queryParams.append("sortOrder", params.sortOrder);
 
-  const response = await apiClient<{
-    data: Job[];
-    pagination: {
-      page: number;
-      limit: number;
-      total: number;
-      totalPages: number;
-      hasNextPage: boolean;
-      hasPreviousPage: boolean;
-    };
-  }>(`/jobs?${queryParams.toString()}`);
+  const response = await apiClient<ApiResponse<Job[]>>(
+    `/jobs?${queryParams.toString()}`,
+    { rawResponse: true },
+  );
+
+  const items = Array.isArray(response.data)
+    ? response.data.map((item) => normalizeJob(item as unknown))
+    : [];
 
   return {
-    items: response.data || [],
+    items,
     total: response.pagination?.total || 0,
     page: response.pagination?.page || 1,
     limit: response.pagination?.limit || 10,
@@ -240,7 +384,8 @@ export async function fetchJobs(params?: {
 }
 
 export async function fetchJobById(id: string): Promise<Job> {
-  return apiClient(`/jobs/${id}`);
+  const raw = await apiClient<Record<string, unknown>>(`/jobs/${id}`);
+  return normalizeJob(raw);
 }
 
 // Exams API
@@ -262,20 +407,17 @@ export async function fetchExams(params?: {
   if (params?.sortBy) queryParams.append("sortBy", params.sortBy);
   if (params?.sortOrder) queryParams.append("sortOrder", params.sortOrder);
 
-  const response = await apiClient<{
-    data: Exam[];
-    pagination: {
-      page: number;
-      limit: number;
-      total: number;
-      totalPages: number;
-      hasNextPage: boolean;
-      hasPreviousPage: boolean;
-    };
-  }>(`/exams?${queryParams.toString()}`);
+  const response = await apiClient<ApiResponse<Exam[]>>(
+    `/exams?${queryParams.toString()}`,
+    { rawResponse: true },
+  );
+
+  const items = Array.isArray(response.data)
+    ? response.data.map((item) => normalizeExam(item as unknown))
+    : [];
 
   return {
-    items: response.data || [],
+    items,
     total: response.pagination?.total || 0,
     page: response.pagination?.page || 1,
     limit: response.pagination?.limit || 10,
@@ -286,7 +428,8 @@ export async function fetchExams(params?: {
 }
 
 export async function fetchExamById(id: string): Promise<Exam> {
-  return apiClient(`/exams/${id}`);
+  const raw = await apiClient<Record<string, unknown>>(`/exams/${id}`);
+  return normalizeExam(raw);
 }
 
 // Saved Items API
@@ -301,17 +444,10 @@ export async function fetchSavedItems(params?: {
   if (params?.limit) queryParams.append("limit", String(params.limit));
   if (params?.item_type) queryParams.append("item_type", params.item_type);
 
-  const response = await apiClient<{
-    data: SavedItem[];
-    pagination: {
-      page: number;
-      limit: number;
-      total: number;
-      totalPages: number;
-      hasNextPage: boolean;
-      hasPreviousPage: boolean;
-    };
-  }>(`/saved?${queryParams.toString()}`, { optional: params?.optional });
+  const response = await apiClient<ApiResponse<SavedItem[]>>(
+    `/saved?${queryParams.toString()}`,
+    { optional: params?.optional, rawResponse: true },
+  );
 
   if (!response) {
     return {
@@ -326,7 +462,9 @@ export async function fetchSavedItems(params?: {
   }
 
   return {
-    items: response.data || [],
+    items: Array.isArray(response.data)
+      ? response.data.map((item) => normalizeSavedItem(item as unknown))
+      : [],
     total: response.pagination?.total || 0,
     page: response.pagination?.page || 1,
     limit: response.pagination?.limit || 10,

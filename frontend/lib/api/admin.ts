@@ -1,6 +1,7 @@
 import { apiClient } from "./client";
 
 export type AdminItemType = "scheme" | "scholarship" | "job" | "exam";
+export type VerificationStatus = "pending" | "approved" | "rejected" | "published";
 
 export interface BackendAdminStats {
   total_users: number;
@@ -46,8 +47,9 @@ export interface BackendAdminUpdate {
 export interface BackendAdminContentItem {
   id: string;
   title?: string;
-  item_type?: AdminItemType;
-  verification_status?: string;
+  item_type?: string;
+  processing_status?: string;
+  verification_status?: VerificationStatus | string;
   status?: string;
   rejection_reason?: string | null;
   approved_by?: string | null;
@@ -61,6 +63,13 @@ export interface BackendAdminContentItem {
   updated_at?: string | null;
   source_name?: string;
   source_url?: string;
+  sourceName?: string;
+  sourceUrl?: string;
+  rawUrl?: string;
+  rawContent?: string;
+  collectionMethod?: string;
+  summary?: string;
+  admin_notes?: string | null;
   category?: string;
   [key: string]: unknown;
 }
@@ -79,6 +88,54 @@ export async function fetchAdminSources(): Promise<BackendAdminSource[]> {
 
 export async function fetchAdminUpdates(): Promise<BackendAdminUpdate[]> {
   return apiClient("/admin/updates");
+}
+
+export async function fetchAdminCollectedData(page = 1, limit = 50, status?: string): Promise<any> {
+  const query = new URLSearchParams();
+  query.append("page", String(page));
+  query.append("limit", String(limit));
+  if (status) query.append("status", status);
+  return apiClient(`/admin/collected-data?${query.toString()}`);
+}
+
+export async function approveCollectedData(id: string, admin_notes?: string): Promise<any> {
+  return apiClient(`/admin/collected-data/${id}/approve`, {
+    method: "PATCH",
+    body: JSON.stringify({ admin_notes }),
+  });
+}
+
+export async function rejectCollectedData(id: string, rejection_reason?: string, admin_notes?: string): Promise<any> {
+  return apiClient(`/admin/collected-data/${id}/reject`, {
+    method: "PATCH",
+    body: JSON.stringify({ rejection_reason, admin_notes }),
+  });
+}
+
+export async function editCollectedData(id: string, updates: Record<string, unknown>): Promise<any> {
+  return apiClient(`/admin/collected-data/${id}/edit`, {
+    method: "PATCH",
+    body: JSON.stringify(updates),
+  });
+}
+
+export async function publishCollectedData(id: string, itemType: string, payload: Record<string, unknown>): Promise<any> {
+  return apiClient(`/admin/collected-data/${id}/publish`, {
+    method: "PATCH",
+    body: JSON.stringify({ itemType, payload }),
+  });
+}
+
+export async function unpublishCollectedData(id: string): Promise<any> {
+  return apiClient(`/admin/collected-data/${id}/unpublish`, {
+    method: "PATCH",
+  });
+}
+
+export async function deleteCollectedData(id: string): Promise<any> {
+  return apiClient(`/admin/collected-data/${id}/delete`, {
+    method: "PATCH",
+  });
 }
 
 export async function fetchAdminItemsByStatus(

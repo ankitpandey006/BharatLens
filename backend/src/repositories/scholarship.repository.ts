@@ -59,7 +59,8 @@ export async function getAllScholarships(query: ListQueryInput): Promise<ListRes
       sqlQuery = sqlQuery.eq("category", category.trim());
     }
 
-    // Apply status filter
+    // Public website should only surface active, published content.
+    sqlQuery = sqlQuery.eq("status", "active").eq("verification_status", "published");
     if (status && status.trim()) {
       sqlQuery = sqlQuery.eq("status", status.trim());
     }

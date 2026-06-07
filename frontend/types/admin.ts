@@ -1,6 +1,7 @@
 export type ItemType = "scheme" | "scholarship" | "job" | "exam" | "update";
 export type ItemStatus =
   | "ai_processed"
+  | "pending"
   | "pending_verification"
   | "approved"
   | "rejected"
@@ -26,6 +27,7 @@ export interface AdminItem {
   category: ItemCategory;
   sourceName: string;
   sourceUrl: string;
+  description?: string;
   summary: string;
   eligibility: string;
   benefits: string;
@@ -41,6 +43,9 @@ export interface AdminItem {
   tags: string[];
   matchedUsersCount?: number;
   recommendationEligible?: boolean;
+  rawUrl?: string;
+  rawContent?: string;
+  collectionMethod?: string;
 }
 
 export interface AdminStats {

@@ -17,6 +17,14 @@ import {
   expireAdminItem,
   verifySourceForAdmin,
   updateUserRoleInDb,
+  fetchCollectedDataForAdmin,
+  getCollectedDataForAdmin,
+  approveCollectedData,
+  rejectCollectedData,
+  editCollectedData,
+  publishCollectedData,
+  unpublishCollectedData,
+  deleteCollectedData,
 } from "../services/admin.service";
 import type { AdminItemType, AdminItemUpdates } from "../repositories/admin.repository";
 
@@ -233,4 +241,129 @@ export const updateUserRoleHandler = asyncHandler(async (req: Request, res: Resp
   }
 
   sendSuccess(res, "User role updated successfully", updated);
+});
+
+export const getAdminCollectedDataHandler = asyncHandler(async (req: Request, res: Response) => {
+  const query = req.validatedQuery as { page?: number; limit?: number; status?: string } | undefined;
+  const page = Number(query?.page || 1);
+  const limit = Number(query?.limit || 20);
+  const status = query?.status ? String(query.status).trim() : undefined;
+  const result = await fetchCollectedDataForAdmin(page, limit, status || "pending");
+  // dev logs
+  // eslint-disable-next-line no-console
+  console.debug("Admin collected-data fetched", { count: result.items.length });
+  sendSuccess(res, "Collected data fetched successfully", result);
+});
+
+export const getAdminCollectedDataByIdHandler = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = req.params as { id: string };
+  const item = await getCollectedDataForAdmin(id);
+
+  if (!item) {
+    return sendError(res, "Collected data not found", 404);
+  }
+
+  sendSuccess(res, "Collected data fetched successfully", item);
+});
+
+export const approveCollectedDataHandler = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = req.params as { id: string };
+  const { admin_notes } = req.validatedBody as { admin_notes?: string };
+  const user = req.user;
+
+  if (!user) {
+    return sendError(res, "Authentication required", 401);
+  }
+
+  const item = await approveCollectedData(id, user.id, admin_notes);
+
+  if (!item) {
+    return sendError(res, "Collected data not found", 404);
+  }
+
+  sendSuccess(res, "Collected data approved", item);
+});
+
+export const rejectCollectedDataHandler = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = req.params as { id: string };
+  const { rejection_reason, admin_notes } = req.validatedBody as { rejection_reason?: string; admin_notes?: string };
+  const user = req.user;
+
+  if (!user) {
+    return sendError(res, "Authentication required", 401);
+  }
+
+  const item = await rejectCollectedData(id, user.id, rejection_reason, admin_notes);
+
+  if (!item) {
+    return sendError(res, "Collected data not found", 404);
+  }
+
+  sendSuccess(res, "Collected data rejected", item);
+});
+
+export const editCollectedDataHandler = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = req.params as { id: string };
+  const updates = req.validatedBody as Record<string, unknown>;
+  const user = req.user;
+
+  if (!user) {
+    return sendError(res, "Authentication required", 401);
+  }
+
+  const item = await editCollectedData(id, updates, user.id);
+
+  if (!item) {
+    return sendError(res, "Collected data not found", 404);
+  }
+
+  sendSuccess(res, "Collected data updated", item);
+});
+
+export const unpublishCollectedDataHandler = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = req.params as { id: string };
+  const user = req.user;
+
+  if (!user) {
+    return sendError(res, "Authentication required", 401);
+  }
+
+  const item = await unpublishCollectedData(id, user.id);
+
+  if (!item) {
+    return sendError(res, "Collected data not found", 404);
+  }
+
+  sendSuccess(res, "Collected data unpublished", item);
+});
+
+export const deleteCollectedDataHandler = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = req.params as { id: string };
+  const user = req.user;
+
+  if (!user) {
+    return sendError(res, "Authentication required", 401);
+  }
+
+  const deleted = await deleteCollectedData(id, user.id);
+
+  if (!deleted) {
+    return sendError(res, "Collected data not found", 404);
+  }
+
+  sendSuccess(res, "Collected data deleted", { id });
+});
+
+export const publishCollectedDataHandler = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = req.params as { id: string };
+  const { itemType, payload } = req.validatedBody as { itemType: string; payload: Record<string, unknown> };
+  const user = req.user;
+
+  if (!user) {
+    return sendError(res, "Authentication required", 401);
+  }
+
+  const inserted = await publishCollectedData(id, itemType, payload, user.id);
+
+  sendSuccess(res, "Collected data published", inserted);
 });

@@ -24,9 +24,16 @@ function normalizeStatus(status?: string): ItemStatus {
     return "pending_verification";
   }
 
-  const normalized = status.toLowerCase();
-  if (statusValues.includes(normalized as ItemStatus)) {
-    return normalized as ItemStatus;
+  const s = String(status).toLowerCase();
+
+  // Map DB processing_status values to UI statuses
+  if (s === "collected" || s === "ai_processed") return "pending_verification";
+  if (s === "processing") return "approved";
+  if (s === "failed") return "rejected";
+  if (s === "processed") return "published";
+
+  if (statusValues.includes(s as ItemStatus)) {
+    return s as ItemStatus;
   }
 
   return "pending_verification";
@@ -65,7 +72,7 @@ export default function AdminItemTable({
 
   return (
     <div className="overflow-x-auto rounded-2xl border border-[#E5E7EB] bg-white">
-      <table className="min-w-[720px] w-full">
+      <table className="min-w-180 w-full">
         <thead>
           <tr className="border-b border-[#E5E7EB] bg-[#F5F3EE] text-left text-sm font-semibold text-[#1A3C6E]">
             <th className="px-4 py-4">Title</th>
@@ -73,13 +80,14 @@ export default function AdminItemTable({
             <th className="px-4 py-4">Status</th>
             <th className="px-4 py-4">Published</th>
             <th className="px-4 py-4">Updated</th>
+            <th className="px-4 py-4">Action</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-[#E5E7EB]">
           {items.map((item) => {
-            const title = item.title || item.id;
-            const itemType = item.item_type || "unknown";
-            const status = normalizeStatus(item.verification_status || item.status);
+            const title = item.title || (item as any).raw_title || "Untitled Item";
+            const itemType = item.item_type || (item as any).type || "scheme";
+            const status = normalizeStatus((item as any).processing_status || item.verification_status || item.status);
             const publishedAt = item.published_at ? format(new Date(item.published_at), "MMM dd, yyyy") : "-";
             const updatedAt = item.updated_at || item.created_at;
             const updatedLabel = updatedAt ? format(new Date(updatedAt), "MMM dd, yyyy") : "-";
@@ -87,18 +95,32 @@ export default function AdminItemTable({
             return (
               <tr
                 key={item.id}
-                onClick={() => onRowClick?.(item)}
                 className={`transition ${onRowClick ? "cursor-pointer hover:bg-[#F5F3EE]/50" : ""}`}
               >
-                <td className="px-4 py-4 align-top text-sm text-[#111827]">{title}</td>
-                <td className="px-4 py-4 align-top text-sm text-[#111827]">
+                <td className="px-4 py-4 align-top text-sm text-[#111827]" onClick={() => onRowClick?.(item)}>
+                  {title}
+                </td>
+                <td className="px-4 py-4 align-top text-sm text-[#111827]" onClick={() => onRowClick?.(item)}>
                   {itemType.charAt(0).toUpperCase() + itemType.slice(1)}
                 </td>
-                <td className="px-4 py-4 align-top">
+                <td className="px-4 py-4 align-top" onClick={() => onRowClick?.(item)}>
                   <StatusBadge status={status} size="sm" />
                 </td>
-                <td className="px-4 py-4 align-top text-sm text-[#111827]">{publishedAt}</td>
-                <td className="px-4 py-4 align-top text-sm text-[#111827]">{updatedLabel}</td>
+                <td className="px-4 py-4 align-top text-sm text-[#111827]" onClick={() => onRowClick?.(item)}>
+                  {publishedAt}
+                </td>
+                <td className="px-4 py-4 align-top text-sm text-[#111827]" onClick={() => onRowClick?.(item)}>
+                  {updatedLabel}
+                </td>
+                <td className="px-4 py-4 align-top">
+                  <button
+                    type="button"
+                    onClick={() => onRowClick?.(item)}
+                    className="rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-sm text-[#1A3C6E] transition hover:bg-[#F5F3EE]"
+                  >
+                    Review
+                  </button>
+                </td>
               </tr>
             );
           })}

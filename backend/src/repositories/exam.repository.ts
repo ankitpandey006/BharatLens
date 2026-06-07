@@ -59,7 +59,8 @@ export async function getAllExams(query: ListQueryInput): Promise<ListResult<Exa
       sqlQuery = sqlQuery.eq("category", category.trim());
     }
 
-    // Apply status filter
+    // Public website should only surface active, published content.
+    sqlQuery = sqlQuery.eq("status", "active").eq("verification_status", "published");
     if (status && status.trim()) {
       sqlQuery = sqlQuery.eq("status", status.trim());
     }

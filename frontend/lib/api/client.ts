@@ -111,6 +111,7 @@ function handleSessionExpired(): void {
 
 interface ApiClientOptions extends RequestInit {
   optional?: boolean;
+  rawResponse?: boolean;
 }
 
 export async function apiClient<T = unknown>(
@@ -122,19 +123,28 @@ export async function apiClient<T = unknown>(
     process.env.NEXT_PUBLIC_API_URL ??
     "http://localhost:5001/api";
   const isOptional = options?.optional ?? false;
+  const returnRaw = options?.rawResponse ?? false;
   
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     ...((options?.headers as Record<string, string>) || {}),
   };
 
-  // Remove optional flag from fetch options
+  // Remove control flags from fetch options
   const fetchOptions: RequestInit = { ...options };
   delete (fetchOptions as Record<string, unknown>).optional;
+  delete (fetchOptions as Record<string, unknown>).rawResponse;
 
   const token = await getAuthToken();
   if (token) {
     headers.Authorization = `Bearer ${token}`;
+  }
+
+  if (process.env.NODE_ENV === "development") {
+    console.debug(`[API] Fetching ${fetchOptions.method ?? "GET"} ${baseUrl}${path}`, {
+      optional: isOptional,
+      rawResponse: returnRaw,
+    });
   }
 
   try {
@@ -158,6 +168,18 @@ export async function apiClient<T = unknown>(
           message: response.statusText || "Unable to parse API response",
         } as ApiResponse<T>;
       }
+    }
+
+    if (process.env.NODE_ENV === "development") {
+      const itemCount = Array.isArray(responseData.data)
+        ? responseData.data.length
+        : undefined;
+      console.debug(`[API] Received ${path}`, {
+        ok: response.ok,
+        success: responseData.success,
+        itemCount,
+        pagination: responseData.pagination,
+      });
     }
 
     // Handle 401 - Unauthorized
@@ -190,6 +212,10 @@ export async function apiClient<T = unknown>(
       throw new Error(errorMsg);
     }
 
+    if (returnRaw) {
+      return responseData as unknown as T;
+    }
+
     return responseData.data as T;
   } catch (error) {
     if (process.env.NODE_ENV === "development") {
@@ -197,6 +223,11 @@ export async function apiClient<T = unknown>(
     }
 
     if (isOptional) {
+      if (process.env.NODE_ENV === "development") {
+        console.debug(`[API] Optional endpoint ${path} failed, returning undefined`, {
+          error: error instanceof Error ? error.message : error,
+        });
+      }
       return undefined as T;
     }
 

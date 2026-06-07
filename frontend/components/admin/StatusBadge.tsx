@@ -18,6 +18,12 @@ export default function StatusBadge({
       border: "border-[#111827]/20",
       label: "Processing",
     },
+    pending: {
+      bg: "bg-yellow-50",
+      text: "text-yellow-700",
+      border: "border-yellow-200",
+      label: "Pending",
+    },
     pending_verification: {
       bg: "bg-yellow-50",
       text: "text-yellow-700",

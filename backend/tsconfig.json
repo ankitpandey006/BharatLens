@@ -18,7 +18,7 @@
     "skipLibCheck": true,
     "sourceMap": true,
 
-    "types": ["node"],
+    "types": ["node", "jest"],
 
     "noImplicitAny": true,
     "noImplicitReturns": true,
@@ -26,6 +26,6 @@
 
     "removeComments": true
   },
-  "include": ["src/**/*"],
+  "include": ["src/**/*", "tests/**/*"],
   "exclude": ["node_modules", "dist", "**/*.test.ts", "**/*.spec.ts"]
 }

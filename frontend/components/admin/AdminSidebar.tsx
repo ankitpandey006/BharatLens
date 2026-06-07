@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 import {
   LayoutDashboard,
   FileText,
@@ -21,6 +22,15 @@ interface AdminSidebarProps {
 
 export default function AdminSidebar({ onNavigate }: AdminSidebarProps) {
   const pathname = usePathname();
+  const [pendingCount, setPendingCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    void import("@/lib/api/admin").then(({ fetchAdminStats }) => {
+      void fetchAdminStats()
+        .then((s) => setPendingCount(s.pending_items ?? 0))
+        .catch(() => setPendingCount(null));
+    });
+  }, []);
 
   const isActive = (path: string) => {
     if (path === "/admin" && pathname === "/admin") return true;
@@ -39,7 +49,7 @@ export default function AdminSidebar({ onNavigate }: AdminSidebarProps) {
       icon: AlertCircle,
       label: "Verification",
       href: "/admin/verification",
-      badge: "12",
+      badge: pendingCount !== null ? String(pendingCount) : null,
     },
     {
       icon: CheckCircle,

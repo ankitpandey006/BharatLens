@@ -44,6 +44,26 @@ export interface CollectedDataRow {
   raw_url: string;
   collection_method: string;
   processing_status: string;
+  title?: string | null;
+  description?: string | null;
+  category?: string | null;
+  state?: string | null;
+  deadline?: string | null;
+  official_url?: string | null;
+  item_type?: string | null;
+  metadata?: Record<string, unknown> | null;
+  verification_status?: string | null;
+  rejection_reason?: string | null;
+  approved_by?: string | null;
+  approved_at?: string | null;
+  rejected_by?: string | null;
+  rejected_at?: string | null;
+  published_item_id?: string | null;
+  published_by?: string | null;
+  published_at?: string | null;
+  unpublished_at?: string | null;
+  is_deleted?: boolean | null;
+  admin_notes?: string | null;
   collected_at: string;
   created_at: string;
   updated_at: string;
@@ -88,16 +108,27 @@ export async function countCollectedDataByMethod(method: string): Promise<number
   return count ?? 0;
 }
 
-export async function listCollectedData(page: number, limit: number): Promise<{ items: CollectedDataRow[]; total: number }> {
+export async function listCollectedData(
+  page: number,
+  limit: number,
+  verificationStatus?: string,
+): Promise<{ items: CollectedDataRow[]; total: number }> {
   const offset = (page - 1) * limit;
-  const { data, error, count } = await supabase
+  let query = supabase
     .from("collected_data")
-    .select("*", { count: "exact" })
+    .select("*, sources:source_id(source_name, source_url)", { count: "exact" })
     .order("created_at", { ascending: false })
-    .range(offset, offset + limit - 1);
+    .neq("is_deleted", true)
+    .is("deleted_at", null);
+
+  if (verificationStatus) {
+    query = query.eq("verification_status", verificationStatus);
+  }
+
+  const { data, error, count } = await query.range(offset, offset + limit - 1);
 
   if (error) {
-    throw new AppError(`Failed to list collected data: ${error.message}`, 500);
+    throw new AppError(`Failed to list collected data: ${error?.message ?? "Unknown error"}`, 500);
   }
 
   return {
@@ -169,4 +200,43 @@ export async function getCollectorStatuses(sourceNames: string[]): Promise<Sourc
   }
 
   return (data as SourceStatusRow[] | null) ?? [];
+}
+
+export async function getCollectedDataById(id: string): Promise<CollectedDataRow | null> {
+  const { data, error } = await supabase
+    .from("collected_data")
+    .select("*, sources:source_id(source_name, source_url)")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (error) {
+    throw new AppError(`Failed to fetch collected data ${id}: ${error.message}`, 500);
+  }
+
+  return data as CollectedDataRow | null;
+}
+
+export async function updateCollectedDataById(id: string, updates: Record<string, unknown>): Promise<CollectedDataRow | null> {
+  const { data, error } = await supabase
+    .from("collected_data")
+    .update(updates)
+    .eq("id", id)
+    .select()
+    .maybeSingle();
+
+  if (error) {
+    throw new AppError(`Failed to update collected data ${id}: ${error.message}`, 500);
+  }
+
+  return data as CollectedDataRow | null;
+}
+
+export async function publishToTable(table: string, payload: Record<string, unknown>): Promise<any> {
+  const { data, error } = await supabase.from(table).insert(payload).select().maybeSingle();
+
+  if (error) {
+    throw new AppError(`Failed to publish to ${table}: ${error.message}`, 500);
+  }
+
+  return data ?? null;
 }

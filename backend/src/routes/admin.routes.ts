@@ -16,6 +16,14 @@ import {
   getPendingAdminItemsHandler,
   getPublishedAdminItemsHandler,
   getRejectedAdminItemsHandler,
+  getAdminCollectedDataHandler,
+  getAdminCollectedDataByIdHandler,
+  approveCollectedDataHandler,
+  rejectCollectedDataHandler,
+  editCollectedDataHandler,
+  publishCollectedDataHandler,
+  unpublishCollectedDataHandler,
+  deleteCollectedDataHandler,
   publishAdminItemHandler,
   rejectAdminItemHandler,
   unpublishAdminItemHandler,
@@ -26,7 +34,11 @@ import {
 import { validate } from "../middlewares/validate.middleware";
 import {
   adminItemParamSchema,
+  adminQuerySchema,
   adminReviewBodySchema,
+  adminNotesBodySchema,
+  adminCollectedDataEditSchema,
+  adminPublishBodySchema,
   adminSourceParamSchema,
   adminStatusQuerySchema,
   adminUpdateBodySchema,
@@ -44,6 +56,27 @@ router.patch("/users/:userId/role", validate(adminUserParamSchema, "params"), va
 router.get("/sources", getAdminSourcesHandler);
 router.patch("/sources/:id/verify", validate(adminSourceParamSchema, "params"), verifyAdminSourceHandler);
 router.get("/updates", getAdminUpdatesHandler);
+router.get("/collected-data", validate(adminQuerySchema, "query"), getAdminCollectedDataHandler);
+router.get("/collected-data/:id", getAdminCollectedDataByIdHandler);
+router.patch(
+  "/collected-data/:id/approve",
+  validate(adminNotesBodySchema, "body"),
+  approveCollectedDataHandler,
+);
+router.patch(
+  "/collected-data/:id/reject",
+  validate(adminReviewBodySchema, "body"),
+  rejectCollectedDataHandler,
+);
+router.patch("/collected-data/:id/edit", validate(adminCollectedDataEditSchema, "body"), editCollectedDataHandler);
+router.patch(
+  "/collected-data/:id/publish",
+  validate(adminPublishBodySchema, "body"),
+  publishCollectedDataHandler,
+);
+router.patch("/collected-data/:id/unpublish", unpublishCollectedDataHandler);
+router.patch("/collected-data/:id/delete", deleteCollectedDataHandler);
+router.get("/verification", validate(adminQuerySchema, "query"), getAdminCollectedDataHandler);
 router.get("/pending", validate(adminStatusQuerySchema, "query"), getPendingAdminItemsHandler);
 router.get("/approved", validate(adminStatusQuerySchema, "query"), getApprovedAdminItemsHandler);
 router.get("/rejected", validate(adminStatusQuerySchema, "query"), getRejectedAdminItemsHandler);

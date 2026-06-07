@@ -193,10 +193,48 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
           </div>
 
           {/* Action Buttons */}
-          <div className="mt-8 flex gap-4">
-            <button className="flex-1 rounded-lg bg-blue-600 px-6 py-3 font-medium text-white hover:bg-blue-700">
-              Apply Now
-            </button>
+          <div className="mt-8 flex flex-col gap-4 sm:flex-row">
+            {job.apply_url || job.official_url || job.source_url ? (
+              <>
+                {(job.apply_url || job.official_url) && (
+                  <a
+                    href={job.apply_url || job.official_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex-1 rounded-lg bg-blue-600 px-6 py-3 text-center font-medium text-white hover:bg-blue-700"
+                  >
+                    Apply Now
+                  </a>
+                )}
+                {job.official_url && !job.apply_url && (
+                  <a
+                    href={job.official_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex-1 rounded-lg bg-green-600 px-6 py-3 text-center font-medium text-white hover:bg-green-700"
+                  >
+                    Official Website
+                  </a>
+                )}
+                {job.source_url && job.source_url !== (job.apply_url || job.official_url) && (
+                  <a
+                    href={job.source_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex-1 rounded-lg border border-gray-300 bg-white px-6 py-3 text-center font-medium text-gray-700 hover:bg-gray-50"
+                  >
+                    Source
+                  </a>
+                )}
+              </>
+            ) : (
+              <button
+                disabled
+                className="flex-1 rounded-lg bg-gray-300 px-6 py-3 text-center font-medium text-gray-600 cursor-not-allowed"
+              >
+                Apply Link Not Available
+              </button>
+            )}
             <button className="flex-1 rounded-lg border border-gray-300 bg-white px-6 py-3 font-medium text-gray-700 hover:bg-gray-50">
               Share
             </button>
