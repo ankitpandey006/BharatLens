@@ -150,7 +150,7 @@ export default function Home() {
       </section>
 
       <section className="mx-auto max-w-7xl px-5 pb-20 sm:px-6 lg:px-8">
-        <div className="rounded-4xlß border border-[#E5E7EB] bg-white p-8 text-center shadow-xl shadow-[#1A3C6E]/10 md:p-10">
+        <div className="rounded-4xl border border-[#E5E7EB] bg-white p-8 text-center shadow-xl shadow-[#1A3C6E]/10 md:p-10">
           <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#3B82F6]">
             Start using BharatLens
           </p>

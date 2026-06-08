@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Bookmark, Clock3, MapPin, Sparkles } from "lucide-react";
+import { Bookmark, Clock3, MapPin, Sparkles, Share2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -32,7 +32,7 @@ export default function DetailHero({ item }: DetailHeroProps) {
             <Badge>{item.categoryLabel}</Badge>
             <Badge tone={statusTone(item.status)}>{item.status}</Badge>
           </div>
-          <h1 className="text-2xl font-bold text-[#1A3C6E] sm:text-3xl">{item.title}</h1>
+          <h1 className="text-xl font-bold text-[#1A3C6E] sm:text-2xl lg:text-3xl">{item.title}</h1>
           <div className="grid gap-2 text-sm text-[#111827]/75 sm:grid-cols-2">
             <p>
               <span className="font-semibold text-[#111827]">Provider:</span> {item.provider}
@@ -48,7 +48,7 @@ export default function DetailHero({ item }: DetailHeroProps) {
             ) : null}
             {item.location ? (
               <p className="inline-flex items-center gap-1">
-                <MapPin className="h-4 w-4 text-[#3B82F6]" />
+                <MapPin className="h-4 w-4 shrink-0 text-[#3B82F6]" />
                 <span>{item.location}</span>
               </p>
             ) : null}
@@ -60,12 +60,15 @@ export default function DetailHero({ item }: DetailHeroProps) {
           </div>
           <p className="text-sm leading-7 text-[#111827]/80">{item.description}</p>
           <div className="flex flex-wrap items-center gap-2 pt-1">
-            <Button variant="outline">Save</Button>
-            <Button variant="secondary">Share</Button>
-            <Button size="icon" variant="ghost" aria-label="Bookmark item">
+            <Button variant="outline" className="min-h-[44px]">Save</Button>
+            <Button variant="secondary" className="min-h-[44px]">
+              <Share2 className="mr-1.5 h-4 w-4" />
+              Share
+            </Button>
+            <Button size="icon" variant="ghost" aria-label="Bookmark item" className="min-h-[44px] min-w-[44px]">
               <Bookmark className="h-5 w-5 text-[#1A3C6E]" />
             </Button>
-            <div className="ml-auto inline-flex items-center gap-1 rounded-full bg-[#F5F3EE] px-3 py-1 text-xs font-medium text-[#1A3C6E]">
+            <div className="ml-auto inline-flex items-center gap-1 rounded-full bg-[#F5F3EE] px-3 py-1.5 text-xs font-medium text-[#1A3C6E]">
               <Clock3 className="h-3.5 w-3.5" />
               <span>Updated daily</span>
               <Sparkles className="h-3.5 w-3.5" />

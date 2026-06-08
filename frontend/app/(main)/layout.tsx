@@ -23,9 +23,12 @@ export default function MainLayout({
     if (authLoading) return;
 
     if (!session) {
-      setCurrentUser(null);
-      setProfileCheckLoading(false);
-      return;
+      // Schedule state updates to avoid synchronous setState in effect
+      const timer = window.setTimeout(() => {
+        setCurrentUser(null);
+        setProfileCheckLoading(false);
+      }, 0);
+      return () => window.clearTimeout(timer);
     }
 
     let canceled = false;
@@ -39,8 +42,8 @@ export default function MainLayout({
         if (!canceled) {
           setCurrentUser(user);
         }
-      } catch (error) {
-        console.error("Failed to load current user in main layout:", error);
+      } catch {
+        // Silently handle — user stays logged out in the UI
 
         if (!canceled) {
           setCurrentUser(null);

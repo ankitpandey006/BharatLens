@@ -358,8 +358,8 @@ export default function ProfileSetupWizard() {
           </span>
         </div>
 
-        <div className="mt-8">
-          <div className="flex items-start justify-between">
+        <div className="mt-6 overflow-x-auto sm:mt-8">
+          <div className="flex min-w-[360px] items-start justify-between sm:min-w-0">
             {steps.map((step, index) => {
               const active = index === stepIndex;
               const completed = index < stepIndex;
@@ -368,7 +368,7 @@ export default function ProfileSetupWizard() {
                 <div key={step.title} className="flex flex-1 items-start">
                   <div className="flex min-w-0 flex-col items-center text-center">
                     <div
-                      className={`flex h-11 w-11 items-center justify-center rounded-full border-2 text-sm font-bold transition ${
+                      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-2 text-xs font-bold transition sm:h-11 sm:w-11 sm:text-sm ${
                         active || completed
                           ? "border-white bg-white text-[#1A3C6E]"
                           : "border-white/40 bg-transparent text-white/60"
@@ -378,7 +378,7 @@ export default function ProfileSetupWizard() {
                     </div>
 
                     <p
-                      className={`mt-2 hidden max-w-24 text-xs font-semibold sm:block ${
+                      className={`mt-2 hidden max-w-20 text-[10px] font-semibold sm:block sm:max-w-24 sm:text-xs ${
                         active ? "text-white" : "text-white/60"
                       }`}
                     >
@@ -388,7 +388,7 @@ export default function ProfileSetupWizard() {
 
                   {index < steps.length - 1 ? (
                     <div
-                      className={`mx-2 mt-5 h-[3px] flex-1 rounded-full ${
+                      className={`mx-1 mt-[18px] h-[3px] flex-1 rounded-full sm:mx-2 sm:mt-5 ${
                         index < stepIndex ? "bg-white" : "bg-white/25"
                       }`}
                     />
@@ -401,11 +401,11 @@ export default function ProfileSetupWizard() {
       </div>
 
       <div className="p-5 sm:p-8">
-        <div className="rounded-3xl bg-[#F5F3EE] p-5">
+        <div className="rounded-3xl bg-[#F5F3EE] p-4 sm:p-5">
           <p className="text-sm font-semibold text-[#3B82F6]">
             Step {stepIndex + 1} of {steps.length}
           </p>
-          <h2 className="mt-2 text-2xl font-bold text-[#1A3C6E]">
+          <h2 className="mt-2 text-xl font-bold text-[#1A3C6E] sm:text-2xl">
             {currentStep.title}
           </h2>
           <p className="mt-2 text-sm leading-6 text-[#111827]/65">

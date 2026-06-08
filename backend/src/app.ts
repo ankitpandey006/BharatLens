@@ -15,7 +15,6 @@ import {
   profileRoutes,
   notificationsRoutes,
   savedRoutes,
-  savedItemsRoutes,
   collectorRoutes,
   pdfRoutes,
   docsRoutes,
@@ -25,12 +24,31 @@ import {
 import { env } from "./config/env";
 import { notFoundHandler } from "./middlewares/not-found.middleware";
 import { errorHandler } from "./middlewares/error.middleware";
+import { apiLimiter, authLimiter, adminLimiter } from "./middlewares/rate-limit.middleware";
 import { sendSuccess } from "./utils/response-helper";
 import { initDailyCollectorJob } from "./jobs/daily-collector.job";
 
 const app = express();
 
-app.use(helmet());
+// Security headers with strict CSP
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        imgSrc: ["'self'", "data:", "https:"],
+        connectSrc: ["'self'", env.FRONTEND_URL, "https://*.supabase.co"],
+        fontSrc: ["'self'"],
+        objectSrc: ["'none'"],
+        mediaSrc: ["'none'"],
+        frameSrc: ["'none'"],
+      },
+    },
+    crossOriginEmbedderPolicy: false,
+  })
+);
 
 app.use(
   cors({
@@ -42,6 +60,11 @@ app.use(
 app.use(express.json({ limit: "1mb" }));
 app.use(express.urlencoded({ extended: true }));
 app.use(morgan("dev"));
+
+// Apply rate limiting
+app.use("/api", apiLimiter);
+app.use("/api/auth", authLimiter);
+app.use("/api/admin", adminLimiter);
 
 app.get("/", (_req, res) => {
   sendSuccess(res, "BharatLens Backend API is running", {
@@ -64,11 +87,14 @@ app.use("/api/eligibility", eligibilityRoutes);
 app.use("/api/recommendations", recommendationRoutes);
 app.use("/api/profile", profileRoutes);
 app.use("/api/notifications", notificationsRoutes);
+// Saved items — single source of truth (use /api/saved, not /api/saved-items)
 app.use("/api/saved", savedRoutes);
-app.use("/api/saved-items", savedItemsRoutes);
 app.use("/api/collectors", collectorRoutes);
 app.use("/api/pdf", pdfRoutes);
-app.use("/api/test-db", testRoutes);
+// Test-db route — only available in development
+if (env.NODE_ENV !== "production") {
+  app.use("/api/test-db", testRoutes);
+}
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/schemes", schemeRoutes);
 app.use("/api/scholarships", scholarshipRoutes);

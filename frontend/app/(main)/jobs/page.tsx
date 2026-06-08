@@ -180,21 +180,21 @@ export default function JobsPage() {
             </div>
 
             {state.totalPages > 1 && (
-              <div className="mt-8 flex items-center justify-center gap-4">
+              <div className="mt-8 flex items-center justify-center gap-3">
                 <button
                   onClick={handlePreviousPage}
                   disabled={state.page === 1}
-                  className="rounded-2xl border border-[#E5E7EB] px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:bg-[#F5F3EE] disabled:text-[#9CA3AF]"
+                  className="min-h-[44px] rounded-xl border border-[#E5E7EB] bg-white px-4 text-sm font-semibold text-[#111827] transition hover:bg-[#F5F3EE] disabled:cursor-not-allowed disabled:opacity-50 sm:px-6"
                 >
                   Previous
                 </button>
-                <p className="text-sm font-medium text-[#111827]/70">
+                <p className="px-2 text-sm font-medium text-[#111827]/70">
                   Page {state.page} of {state.totalPages}
                 </p>
                 <button
                   onClick={handleNextPage}
                   disabled={state.page === state.totalPages}
-                  className="rounded-2xl bg-[#1A3C6E] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#3B82F6] disabled:cursor-not-allowed disabled:bg-[#9BB6E5]"
+                  className="min-h-[44px] rounded-xl bg-[#1A3C6E] px-4 text-sm font-semibold text-white transition hover:bg-[#3B82F6] disabled:cursor-not-allowed disabled:bg-[#9BB6E5] sm:px-6"
                 >
                   Next
                 </button>

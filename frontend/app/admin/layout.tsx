@@ -19,44 +19,31 @@ export default function AdminLayout({
   const [roleCheckLoading, setRoleCheckLoading] = useState(true);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
+  // Fetch user only on mount and session change — NOT on every pathname change
+  // Initial state is already loading=true, so we only set it false when done.
   useEffect(() => {
-    if (authLoading) {
-      return;
-    }
-
-    if (!session) {
-      router.replace(`/login?next=${encodeURIComponent(pathname)}`);
-      return;
-    }
+    if (authLoading) return;
+    if (!session) return;
 
     let canceled = false;
 
-    const loadCurrentUser = async () => {
-      setRoleCheckLoading(true);
-
-      try {
-        const user = await getCurrentUser();
-        if (!canceled) {
-          setCurrentUser(user);
-        }
-      } catch {
-        if (!canceled) {
-          setCurrentUser(null);
-        }
-      } finally {
-        if (!canceled) {
-          setRoleCheckLoading(false);
-        }
-      }
-    };
-
-    loadCurrentUser();
+    getCurrentUser()
+      .then((user) => {
+        if (!canceled) setCurrentUser(user);
+      })
+      .catch(() => {
+        if (!canceled) setCurrentUser(null);
+      })
+      .finally(() => {
+        if (!canceled) setRoleCheckLoading(false);
+      });
 
     return () => {
       canceled = true;
     };
-  }, [authLoading, pathname, router, session]);
+  }, [authLoading, session]); // Intentionally omitting pathname/router — only re-fetch on auth state change
 
+  // Separate effect for role-based redirects — listens to pathname
   const role =
     currentUser?.role ||
     (session?.user?.user_metadata as { role?: string } | undefined)?.role ||
@@ -64,9 +51,7 @@ export default function AdminLayout({
   const isAdmin = role ? ["admin", "moderator"].includes(role) : null;
 
   useEffect(() => {
-    if (authLoading || roleCheckLoading) {
-      return;
-    }
+    if (authLoading || roleCheckLoading) return;
 
     if (!session) {
       router.replace(`/login?next=${encodeURIComponent(pathname)}`);

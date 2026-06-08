@@ -141,24 +141,27 @@ export async function rejectAdminContentById(
   adminId: string,
   rejectionReason?: string,
 ): Promise<AdminItem | null> {
-  void adminId;
   return performUpdate(itemType, itemId, {
     verification_status: "rejected",
     rejection_reason: rejectionReason ?? null,
+    approved_by: null,
+    approved_at: null,
   });
 }
 
 export async function publishAdminContentById(itemType: AdminItemType, itemId: string, adminId: string): Promise<AdminItem | null> {
-  void adminId;
   return performUpdate(itemType, itemId, {
     verification_status: "published",
+    published_by: adminId,
+    published_at: new Date().toISOString(),
   });
 }
 
 export async function unpublishAdminContentById(itemType: AdminItemType, itemId: string, adminId: string): Promise<AdminItem | null> {
-  void adminId;
   return performUpdate(itemType, itemId, {
     verification_status: "pending",
+    published_by: null,
+    published_at: null,
   });
 }
 

@@ -1,13 +1,13 @@
 import type { Request, Response } from "express";
 import { asyncHandler } from "../utils/async-handler";
-import { successResponse } from "../utils/api-response";
+import { sendSuccess, sendError } from "../utils/response-helper";
 import { fetchAllJobs, fetchJobById } from "../services/job.service";
 import { parseListQuery } from "../utils/query-parser";
 
 export const getAllJobs = asyncHandler(async (req: Request, res: Response) => {
   const query = parseListQuery(req);
   const result = await fetchAllJobs(query);
-  res.status(200).json(successResponse("Jobs fetched successfully", result.items, result.pagination));
+  sendSuccess(res, "Jobs fetched successfully", result.items, result.pagination);
 });
 
 export const getJobByIdHandler = asyncHandler(async (req: Request, res: Response) => {
@@ -15,9 +15,9 @@ export const getJobByIdHandler = asyncHandler(async (req: Request, res: Response
   const job = await fetchJobById(id);
 
   if (!job) {
-    res.status(404).json({ success: false, message: "Job not found", error: "Job not found" });
+    sendError(res, "Job not found", 404);
     return;
   }
 
-  res.status(200).json(successResponse("Job fetched successfully", job));
+  sendSuccess(res, "Job fetched successfully", job);
 });

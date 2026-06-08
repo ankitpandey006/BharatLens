@@ -15,16 +15,16 @@ export default function DetailSidebar({ item }: DetailSidebarProps) {
       <Card>
         <CardContent className="space-y-3 pt-5">
           <Link href={item.applyUrl ?? "#"} target="_blank" rel="noreferrer">
-            <Button className="w-full">Apply Now</Button>
+            <Button className="w-full min-h-[44px]">Apply Now</Button>
           </Link>
           <Link href={item.websiteUrl ?? "#"} target="_blank" rel="noreferrer">
-            <Button variant="outline" className="w-full">
-              Official Website <ExternalLink className="ml-2 h-4 w-4" />
+            <Button variant="outline" className="w-full min-h-[44px]">
+              Official Website <ExternalLink className="ml-2 h-4 w-4 shrink-0" />
             </Button>
           </Link>
           <Link href={item.pdfUrl ?? "#"} target="_blank" rel="noreferrer">
-            <Button variant="outline" className="w-full">
-              Download PDF <FileDown className="ml-2 h-4 w-4" />
+            <Button variant="outline" className="w-full min-h-[44px]">
+              Download PDF <FileDown className="ml-2 h-4 w-4 shrink-0" />
             </Button>
           </Link>
         </CardContent>
@@ -44,8 +44,8 @@ export default function DetailSidebar({ item }: DetailSidebarProps) {
             <p className="font-medium text-[#1A3C6E]">AI Match Score</p>
             <p className="text-lg font-semibold">{item.matchScore}%</p>
           </div>
-          <Button variant="secondary" className="w-full">
-            Notify Me <BellRing className="ml-2 h-4 w-4" />
+          <Button variant="secondary" className="w-full min-h-[44px]">
+            Notify Me <BellRing className="ml-2 h-4 w-4 shrink-0" />
           </Button>
         </CardContent>
       </Card>

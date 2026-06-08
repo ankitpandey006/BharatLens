@@ -4,6 +4,8 @@
  * - Handles API response format: {success, message, data}
  * - Two modes: required (throws on 401) and optional (returns null on 401)
  * - Provides typed responses
+ * - Request deduplication: concurrent identical GET requests share a single promise
+ * - AbortController cleanup support
  */
 
 import { createClient } from "@/lib/supabase/client";
@@ -23,6 +25,15 @@ export interface ApiResponse<T = unknown> {
 }
 
 const AUTH_TOKEN_KEY = "bharatlens_auth_token";
+
+// ─── Request Deduplication ─────────────────────────────────────
+// Caches in-flight GET requests by URL+token so concurrent identical
+// calls share a single promise instead of firing duplicate requests.
+const inflightRequests = new Map<string, Promise<unknown>>();
+
+function inflightKey(path: string, token: string | null): string {
+  return `${path}::${token ?? "no-token"}`;
+}
 
 /**
  * Get current auth token from Supabase session (primary)
@@ -112,6 +123,7 @@ function handleSessionExpired(): void {
 interface ApiClientOptions extends RequestInit {
   optional?: boolean;
   rawResponse?: boolean;
+  signal?: AbortSignal;
 }
 
 export async function apiClient<T = unknown>(
@@ -135,102 +147,90 @@ export async function apiClient<T = unknown>(
   delete (fetchOptions as Record<string, unknown>).optional;
   delete (fetchOptions as Record<string, unknown>).rawResponse;
 
+  const isGetRequest = !fetchOptions.method || fetchOptions.method === "GET";
+
   const token = await getAuthToken();
   if (token) {
     headers.Authorization = `Bearer ${token}`;
   }
 
-  if (process.env.NODE_ENV === "development") {
-    console.debug(`[API] Fetching ${fetchOptions.method ?? "GET"} ${baseUrl}${path}`, {
-      optional: isOptional,
-      rawResponse: returnRaw,
-    });
+  // ─── Request Deduplication ─────────────────────────────────
+  // For concurrent identical GET calls, reuse the in-flight promise
+  const key = isGetRequest ? inflightKey(path, token) : "";
+  if (isGetRequest && inflightRequests.has(key)) {
+    return inflightRequests.get(key) as Promise<T>;
   }
 
-  try {
-    const response = await fetch(`${baseUrl}${path}`, {
-      ...fetchOptions,
-      headers,
-    });
-
-    const rawBody = await response.text();
-    let responseData: ApiResponse<T> = {
-      success: response.ok,
-      message: response.statusText || "Unknown API response",
-    } as ApiResponse<T>;
-
-    if (rawBody) {
-      try {
-        responseData = JSON.parse(rawBody) as ApiResponse<T>;
-      } catch {
-        responseData = {
-          success: response.ok,
-          message: response.statusText || "Unable to parse API response",
-        } as ApiResponse<T>;
-      }
-    }
-
-    if (process.env.NODE_ENV === "development") {
-      const itemCount = Array.isArray(responseData.data)
-        ? responseData.data.length
-        : undefined;
-      console.debug(`[API] Received ${path}`, {
-        ok: response.ok,
-        success: responseData.success,
-        itemCount,
-        pagination: responseData.pagination,
+  const fetchPromise = (async (): Promise<T> => {
+    try {
+      const response = await fetch(`${baseUrl}${path}`, {
+        ...fetchOptions,
+        headers,
       });
-    }
 
-    // Handle 401 - Unauthorized
-    if (response.status === 401) {
-      if (isOptional) {
-        if (process.env.NODE_ENV === "development") {
-          console.debug(`[API] Optional endpoint ${path} returned 401, returning empty fallback`);
+      const rawBody = await response.text();
+      let responseData: ApiResponse<T> = {
+        success: response.ok,
+        message: response.statusText || "Unknown API response",
+      } as ApiResponse<T>;
+
+      if (rawBody) {
+        try {
+          responseData = JSON.parse(rawBody) as ApiResponse<T>;
+        } catch {
+          responseData = {
+            success: response.ok,
+            message: response.statusText || "Unable to parse API response",
+          } as ApiResponse<T>;
         }
-        return undefined as T;
       }
 
-      const sessionValid = await verifySessionValid();
-      if (!sessionValid) {
-        handleSessionExpired();
+      // Handle 429 - Too Many Requests (user-friendly message)
+      if (response.status === 429) {
+        const errorMsg =
+          responseData.message ||
+          "The system is receiving too many requests. Please wait a moment and try again.";
+        throw new Error(errorMsg);
       }
 
-      throw new Error(
-        responseData.message || "Session expired. Please login again.",
-      );
-    }
+      // Handle 401 - Unauthorized
+      if (response.status === 401) {
+        if (isOptional) {
+          return undefined as T;
+        }
 
-    if (!response.ok || responseData.success === false) {
-      const errorMsg = responseData.message || `API request failed: ${response.status}`;
-      if (process.env.NODE_ENV === "development") {
-        console.error(`[API] ${path} failed:`, errorMsg, {
-          status: response.status,
-          success: responseData.success,
-        });
+        const sessionValid = await verifySessionValid();
+        if (!sessionValid) {
+          handleSessionExpired();
+        }
+
+        throw new Error(
+          responseData.message || "Session expired. Please login again.",
+        );
       }
-      throw new Error(errorMsg);
-    }
 
-    if (returnRaw) {
-      return responseData as unknown as T;
-    }
-
-    return responseData.data as T;
-  } catch (error) {
-    if (process.env.NODE_ENV === "development") {
-      console.error(`[API] ${path} error:`, error instanceof Error ? error.message : error);
-    }
-
-    if (isOptional) {
-      if (process.env.NODE_ENV === "development") {
-        console.debug(`[API] Optional endpoint ${path} failed, returning undefined`, {
-          error: error instanceof Error ? error.message : error,
-        });
+      if (!response.ok || responseData.success === false) {
+        const errorMsg = responseData.message || `API request failed: ${response.status}`;
+        throw new Error(errorMsg);
       }
-      return undefined as T;
-    }
 
-    throw error;
+      if (returnRaw) {
+        return responseData as unknown as T;
+      }
+
+      return responseData.data as T;
+    } finally {
+      // Clean up dedup cache when request completes (success or failure)
+      if (isGetRequest) {
+        inflightRequests.delete(key);
+      }
+    }
+  })();
+
+  // Register in-flight promise for dedup
+  if (isGetRequest) {
+    inflightRequests.set(key, fetchPromise);
   }
+
+  return fetchPromise;
 }

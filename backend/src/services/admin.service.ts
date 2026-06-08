@@ -727,12 +727,14 @@ export async function editCollectedData(id: string, updates: Record<string, unkn
     delete normalizedUpdates.link;
   }
 
-  if (normalizedUpdates.official_url || normalizedUpdates.source_url || normalizedUpdates.raw_url) {
+  // Keep official_url, source_url, and raw_url as separate columns.
+  // Only merge into raw_url if raw_url itself wasn't explicitly provided.
+  if (!normalizedUpdates.raw_url) {
     normalizedUpdates.raw_url =
       normalizedUpdates.official_url ?? normalizedUpdates.source_url ?? normalizedUpdates.raw_url;
-    delete normalizedUpdates.official_url;
-    delete normalizedUpdates.source_url;
   }
+  // If official_url or source_url were provided, keep them as-is
+  // so the editCollectedData endpoint preserves all three URL fields
 
   const cleanedUpdates: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(normalizedUpdates)) {

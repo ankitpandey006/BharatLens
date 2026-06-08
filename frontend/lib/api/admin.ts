@@ -44,12 +44,17 @@ export interface BackendAdminUpdate {
   [key: string]: unknown;
 }
 
-export interface BackendAdminContentItem {
+interface BaseBackendItem {
   id: string;
+  [key: string]: unknown;
+}
+
+export interface BackendAdminContentItem extends BaseBackendItem {
   title?: string;
+  raw_title?: string;
   item_type?: string;
   processing_status?: string;
-  verification_status?: VerificationStatus | string;
+  verification_status?: string;
   status?: string;
   rejection_reason?: string | null;
   approved_by?: string | null;
@@ -67,11 +72,43 @@ export interface BackendAdminContentItem {
   sourceUrl?: string;
   rawUrl?: string;
   rawContent?: string;
+  raw_content?: string;
+  raw_url?: string;
+  collection_method?: string;
   collectionMethod?: string;
   summary?: string;
   admin_notes?: string | null;
   category?: string;
-  [key: string]: unknown;
+  eligibility?: string;
+  benefits?: string;
+  deadline?: string | null;
+  state?: string;
+  description?: string;
+  content?: string;
+  name?: string;
+  official_url?: string;
+  apply_url?: string;
+  link?: string;
+  provider?: string;
+  organization?: string;
+  department?: string;
+  conducting_body?: string;
+  conductingBody?: string;
+  location?: string;
+  benefit?: string;
+  amount?: string | number;
+  vacancies?: string | number;
+  qualification?: string;
+  education?: string;
+  exam_date?: string;
+  examDate?: string;
+  last_date?: string;
+  application_end?: string;
+  ai_confidence?: number;
+  confidence?: number;
+  source_trust?: number;
+  ai_notes?: string;
+  metadata?: Record<string, unknown>;
 }
 
 export async function fetchAdminStats(): Promise<BackendAdminStats> {
@@ -90,6 +127,7 @@ export async function fetchAdminUpdates(): Promise<BackendAdminUpdate[]> {
   return apiClient("/admin/updates");
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function fetchAdminCollectedData(page = 1, limit = 50, status?: string): Promise<any> {
   const query = new URLSearchParams();
   query.append("page", String(page));
@@ -98,6 +136,7 @@ export async function fetchAdminCollectedData(page = 1, limit = 50, status?: str
   return apiClient(`/admin/collected-data?${query.toString()}`);
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function approveCollectedData(id: string, admin_notes?: string): Promise<any> {
   return apiClient(`/admin/collected-data/${id}/approve`, {
     method: "PATCH",
@@ -105,6 +144,7 @@ export async function approveCollectedData(id: string, admin_notes?: string): Pr
   });
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function rejectCollectedData(id: string, rejection_reason?: string, admin_notes?: string): Promise<any> {
   return apiClient(`/admin/collected-data/${id}/reject`, {
     method: "PATCH",
@@ -112,6 +152,7 @@ export async function rejectCollectedData(id: string, rejection_reason?: string,
   });
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function editCollectedData(id: string, updates: Record<string, unknown>): Promise<any> {
   return apiClient(`/admin/collected-data/${id}/edit`, {
     method: "PATCH",
@@ -119,6 +160,7 @@ export async function editCollectedData(id: string, updates: Record<string, unkn
   });
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function publishCollectedData(id: string, itemType: string, payload: Record<string, unknown>): Promise<any> {
   return apiClient(`/admin/collected-data/${id}/publish`, {
     method: "PATCH",
@@ -126,12 +168,14 @@ export async function publishCollectedData(id: string, itemType: string, payload
   });
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function unpublishCollectedData(id: string): Promise<any> {
   return apiClient(`/admin/collected-data/${id}/unpublish`, {
     method: "PATCH",
   });
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function deleteCollectedData(id: string): Promise<any> {
   return apiClient(`/admin/collected-data/${id}/delete`, {
     method: "PATCH",

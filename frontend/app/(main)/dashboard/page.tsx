@@ -126,28 +126,28 @@ export default function DashboardPage() {
           <div className="absolute -right-16 -top-16 h-64 w-64 rounded-full bg-[#3B82F6]/20 blur-3xl" />
           <div className="absolute -bottom-16 left-10 h-64 w-64 rounded-full bg-[#9BB6E5]/20 blur-3xl" />
 
-          <div className="relative z-10 grid gap-8 p-6 sm:p-8 lg:grid-cols-[1.4fr_0.7fr] lg:items-center lg:p-10">
+          <div className="relative z-10 grid gap-6 p-6 sm:gap-8 sm:p-8 lg:grid-cols-[1.4fr_0.7fr] lg:items-center lg:p-10">
             {/* Left */}
             <div>
-              <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-xs font-semibold text-white ring-1 ring-white/15">
+              <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 text-xs font-semibold text-white ring-1 ring-white/15 sm:px-4 sm:py-2">
                 <Sparkles size={14} />
                 AI-powered dashboard
               </div>
 
-              <h1 className="mt-5 text-2xl font-bold leading-tight sm:text-3xl lg:text-4xl">
+              <h1 className="mt-4 text-xl font-bold leading-tight sm:mt-5 sm:text-3xl lg:text-4xl">
                 Your personalized workspace
               </h1>
 
-              <p className="mt-3 max-w-xl text-sm leading-6 text-white/70 sm:text-base">
+              <p className="mt-2 max-w-xl text-sm leading-6 text-white/70 sm:mt-3 sm:text-base">
                 Track schemes, scholarships, jobs, exams, and AI recommendations
                 tailored for your profile.
               </p>
 
-              <div className="mt-5 flex flex-wrap gap-3">
+              <div className="mt-4 flex flex-wrap gap-3 sm:mt-5">
                 {profile.completed ? (
                   <Link
                     href="/profile"
-                    className="inline-flex items-center gap-2 rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-[#1A3C6E] shadow-sm transition hover:bg-[#F5F3EE]"
+                    className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-semibold text-[#1A3C6E] shadow-sm transition hover:bg-[#F5F3EE] sm:px-5 sm:py-2.5"
                   >
                     <CheckCircle2 size={16} />
                     Profile Complete
@@ -155,14 +155,14 @@ export default function DashboardPage() {
                 ) : (
                   <Link
                     href="/profile/setup"
-                    className="inline-flex items-center gap-2 rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-[#1A3C6E] shadow-sm transition hover:bg-[#F5F3EE]"
+                    className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-semibold text-[#1A3C6E] shadow-sm transition hover:bg-[#F5F3EE] sm:px-5 sm:py-2.5"
                   >
                     Complete Profile ({profile.completionPercent}%)
                   </Link>
                 )}
                 <Link
                   href="/chatbot"
-                  className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-white/20"
+                  className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/20 sm:px-5 sm:py-2.5"
                 >
                   <Bot size={16} />
                   Ask AI
@@ -171,31 +171,31 @@ export default function DashboardPage() {
             </div>
 
             {/* Right - Profile Strength */}
-            <div className="rounded-2xl border border-white/15 bg-white/10 p-5 backdrop-blur-sm">
+            <div className="rounded-2xl border border-white/15 bg-white/10 p-4 backdrop-blur-sm sm:p-5">
               <div className="flex items-center justify-between">
                 <p className="text-xs font-semibold text-white/80">
                   {profile.completed ? "Profile Complete" : "Profile Strength"}
                 </p>
-                <span className="rounded-full bg-white/20 px-3 py-1 text-xs font-bold text-white ring-1 ring-white/10">
+                <span className="rounded-full bg-white/20 px-2 py-0.5 text-xs font-bold text-white ring-1 ring-white/10 sm:px-3 sm:py-1">
                   {profile.completionPercent}%
                 </span>
               </div>
 
-              <div className="mt-3 h-2.5 rounded-full bg-white/15">
+              <div className="mt-3 h-2 rounded-full bg-white/15 sm:h-2.5">
                 <div
-                  className="h-2.5 rounded-full bg-gradient-to-r from-[#9BB6E5] to-[#3B82F6] transition-all duration-700 ease-out"
+                  className="h-2 rounded-full bg-gradient-to-r from-[#9BB6E5] to-[#3B82F6] transition-all duration-700 ease-out sm:h-2.5"
                   style={{ width: `${profile.completionPercent}%` }}
                 />
               </div>
 
               {!profile.completed && profile.missingFields.length > 0 && (
-                <p className="mt-3 text-xs leading-5 text-white/60">
+                <p className="mt-2 text-xs leading-5 text-white/60 sm:mt-3">
                   Complete your profile ({profile.completionPercent}%) for personalized recommendations.
                 </p>
               )}
 
               {profile.completed && (
-                <p className="mt-3 text-xs leading-5 text-white/60">
+                <p className="mt-2 text-xs leading-5 text-white/60 sm:mt-3">
                   ✓ Your profile is complete. You&apos;ll get the best AI recommendations!
                 </p>
               )}
@@ -226,7 +226,7 @@ export default function DashboardPage() {
         )}
 
         {/* ─── Stats Cards ─── */}
-        <section className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <section className="mt-6 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
           {statCards.map((item) => {
             const Icon = item.icon;
 
@@ -235,16 +235,16 @@ export default function DashboardPage() {
                 key={item.label}
                 href={item.href}
                 prefetch={false}
-                className="group relative overflow-hidden rounded-2xl border border-[#E5E7EB] bg-white p-5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-[#1A3C6E]/8"
+                className="group relative overflow-hidden rounded-2xl border border-[#E5E7EB] bg-white p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-[#1A3C6E]/8 sm:p-5"
               >
                 <div className="flex items-center justify-between">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#F5F3EE] group-hover:bg-[#1A3C6E]/5">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#F5F3EE] group-hover:bg-[#1A3C6E]/5 sm:h-11 sm:w-11">
                     <Icon size={20} className={item.color} />
                   </div>
                   <ChevronRight size={14} className="text-[#111827]/20 transition group-hover:translate-x-0.5 group-hover:text-[#111827]/40" />
                 </div>
 
-                <p className="mt-4 text-2xl font-bold text-[#1A3C6E]">
+                <p className="mt-3 text-xl font-bold text-[#1A3C6E] sm:mt-4 sm:text-2xl">
                   {item.value.toLocaleString()}
                 </p>
                 <p className="mt-0.5 text-xs font-medium text-[#111827]/60">
@@ -258,13 +258,13 @@ export default function DashboardPage() {
         {/* ─── Main Content Grid ─── */}
         <section className="mt-6 grid gap-6 lg:grid-cols-[1fr_340px]">
           {/* Left Column */}
-          <div className="grid gap-6">
+          <div className="grid gap-5 sm:gap-6">
             {/* AI Recommendations */}
-            <div className="rounded-2xl border border-[#E5E7EB] bg-white p-6 shadow-sm">
+            <div className="rounded-2xl border border-[#E5E7EB] bg-white p-5 shadow-sm sm:p-6">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Zap size={20} className="text-[#1A3C6E]" />
-                  <h2 className="text-lg font-bold text-[#111827]">AI Recommendations</h2>
+                  <Zap size={18} className="text-[#1A3C6E] sm:size-5" />
+                  <h2 className="text-base font-bold text-[#111827] sm:text-lg">AI Recommendations</h2>
                 </div>
                 {hasRecommendations && (
                   <Link
@@ -311,10 +311,10 @@ export default function DashboardPage() {
             </div>
 
             {/* Today's Updates */}
-            <div className="rounded-2xl border border-[#E5E7EB] bg-white p-6 shadow-sm">
+            <div className="rounded-2xl border border-[#E5E7EB] bg-white p-5 shadow-sm sm:p-6">
               <div className="flex items-center gap-2">
-                <CalendarDays size={20} className="text-[#1A3C6E]" />
-                <h2 className="text-lg font-bold text-[#111827]">Recent Updates</h2>
+                <CalendarDays size={18} className="text-[#1A3C6E] sm:size-5" />
+                <h2 className="text-base font-bold text-[#111827] sm:text-lg">Recent Updates</h2>
               </div>
 
               <div className="mt-4 space-y-2">

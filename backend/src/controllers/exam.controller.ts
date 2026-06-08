@@ -1,13 +1,13 @@
 import type { Request, Response } from "express";
 import { asyncHandler } from "../utils/async-handler";
-import { successResponse } from "../utils/api-response";
+import { sendSuccess, sendError } from "../utils/response-helper";
 import { fetchAllExams, fetchExamById } from "../services/exam.service";
 import { parseListQuery } from "../utils/query-parser";
 
 export const getAllExams = asyncHandler(async (req: Request, res: Response) => {
   const query = parseListQuery(req);
   const result = await fetchAllExams(query);
-  res.status(200).json(successResponse("Exams fetched successfully", result.items, result.pagination));
+  sendSuccess(res, "Exams fetched successfully", result.items, result.pagination);
 });
 
 export const getExamByIdHandler = asyncHandler(async (req: Request, res: Response) => {
@@ -15,9 +15,9 @@ export const getExamByIdHandler = asyncHandler(async (req: Request, res: Respons
   const exam = await fetchExamById(id);
 
   if (!exam) {
-    res.status(404).json({ success: false, message: "Exam not found", error: "Exam not found" });
+    sendError(res, "Exam not found", 404);
     return;
   }
 
-  res.status(200).json(successResponse("Exam fetched successfully", exam));
+  sendSuccess(res, "Exam fetched successfully", exam);
 });

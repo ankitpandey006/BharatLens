@@ -39,7 +39,7 @@ export default function SavedItemCard({ item, onRemove, removing }: SavedItemCar
   return (
     <article className="rounded-2xl border border-[#E5E7EB] bg-white p-5 shadow-md transition-all duration-200 hover:-translate-y-0.5 hover:border-[#9BB6E5] hover:shadow-lg">
       {/* Type + Status badges */}
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <span className={`rounded-full px-3 py-1 text-xs font-semibold ${typeStyles[item.type]}`}>{item.type}</span>
         <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusStyles[item.status]}`}>{item.status}</span>
       </div>
@@ -60,9 +60,8 @@ export default function SavedItemCard({ item, onRemove, removing }: SavedItemCar
       )}
 
       {/* Actions row */}
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-[#E5E7EB] pt-4">
-        {/* Deadline badge */}
-        <span className={`rounded-full px-3 py-1 text-xs font-medium ${
+      <div className="mt-4 flex flex-col gap-3 border-t border-[#E5E7EB] pt-4 sm:flex-row sm:items-center sm:justify-between">
+        <span className={`w-fit rounded-full px-3 py-1 text-xs font-medium ${
           hasDeadline
             ? "bg-[#EEF2FF] text-[#1A3C6E]"
             : "bg-[#F3F4F6] text-[#6B7280]"
@@ -70,9 +69,7 @@ export default function SavedItemCard({ item, onRemove, removing }: SavedItemCar
           {hasDeadline ? `Deadline: ${item.deadline}` : "No deadline"}
         </span>
 
-        {/* Action buttons */}
-        <div className="flex gap-2">
-          {/* Open / Detail link */}
+        <div className="flex flex-wrap gap-2">
           {item.detailUrl && (
             <a
               href={item.detailUrl}
@@ -83,7 +80,6 @@ export default function SavedItemCard({ item, onRemove, removing }: SavedItemCar
             </a>
           )}
 
-          {/* Apply button */}
           {applyUrl ? (
             <a
               href={applyUrl}
@@ -99,11 +95,11 @@ export default function SavedItemCard({ item, onRemove, removing }: SavedItemCar
             </span>
           )}
 
-          {/* Remove button */}
           <button
             type="button"
             onClick={onRemove}
             disabled={removing}
+            aria-label="Remove saved item"
             className={`min-h-[44px] rounded-xl border px-3 py-2.5 text-sm font-medium transition-colors duration-200 ${
               removing
                 ? "border-[#9CA3AF] bg-[#F3F4F6] text-[#6B7280] cursor-wait opacity-70"

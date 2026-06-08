@@ -365,7 +365,7 @@ export default function SiteHeader() {
       </div>
 
       {isMenuOpen && (
-        <div className="animate-in fade-in slide-in-from-top-1 border-t border-[#E5E7EB]/60 bg-white/95 px-4 py-4 shadow-2xl backdrop-blur-sm lg:hidden">
+        <div className="max-h-[calc(100vh-4rem)] overflow-y-auto border-t border-[#E5E7EB]/60 bg-white/95 px-4 py-4 shadow-2xl backdrop-blur-sm lg:hidden">
           <div className="grid gap-2">
             {(showAuthenticatedNav
               ? [
@@ -444,7 +444,7 @@ export default function SiteHeader() {
               })}
             </div>
 
-            <div className="my-2" />
+            <div className="my-2 border-t border-[#E5E7EB]/40" />
 
             {showAuthenticatedNav ? (
               <button

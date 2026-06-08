@@ -21,26 +21,26 @@ export default function ListingSearchFilter({
   filterOptions,
   resultCount,
 }: ListingSearchFilterProps) {
-  const filterId = `${filterLabel.toLowerCase().replace(/\s+/g, "-")}-filter`;
+  const filterId = `${filterLabel.toLowerCase().replace(/\\s+/g, "-")}-filter`;
 
   return (
     <div className="rounded-2xl border border-[#E5E7EB] bg-white p-3 shadow-md sm:p-4">
       <div className="mb-3 flex items-center justify-between gap-2">
         <p className="text-xs font-semibold uppercase tracking-wide text-[#1A3C6E]">Search and filter</p>
         {typeof resultCount === "number" ? (
-          <span className="rounded-full bg-[#EEF2FF] px-3 py-1 text-xs font-medium text-[#1A3C6E]">
+          <span className="shrink-0 rounded-full bg-[#EEF2FF] px-3 py-1 text-xs font-medium text-[#1A3C6E]">
             {resultCount} result{resultCount === 1 ? "" : "s"}
           </span>
         ) : null}
       </div>
 
-      <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(180px,220px)]">
+      <div className="grid gap-3 sm:grid-cols-[1fr_220px]">
         <input
           type="text"
           value={searchValue}
           onChange={(event) => onSearchChange(event.target.value)}
           placeholder={searchPlaceholder}
-          className="rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] px-4 py-3 text-sm text-[#111827] outline-none transition-colors duration-200 placeholder:text-[#6B7280] focus:border-[#3B82F6] focus:bg-white"
+          className="min-h-[44px] rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] px-4 py-2.5 text-sm text-[#111827] outline-none transition-colors duration-200 placeholder:text-[#6B7280] focus:border-[#3B82F6] focus:bg-white"
         />
 
         <label className="sr-only" htmlFor={filterId}>
@@ -50,7 +50,7 @@ export default function ListingSearchFilter({
           id={filterId}
           value={selectedFilter}
           onChange={(event) => onFilterChange(event.target.value)}
-          className="rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] px-4 py-3 text-sm text-[#111827] outline-none transition-colors duration-200 focus:border-[#3B82F6] focus:bg-white"
+          className="min-h-[44px] rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] px-4 py-2.5 text-sm text-[#111827] outline-none transition-colors duration-200 focus:border-[#3B82F6] focus:bg-white"
         >
           {filterOptions.map((option) => (
             <option key={option} value={option}>

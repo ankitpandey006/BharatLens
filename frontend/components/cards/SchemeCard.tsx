@@ -32,10 +32,10 @@ export default function SchemeCard({
   const status = scheme.status || "Upcoming";
 
   return (
-    <article className="rounded-2xl border border-[#E5E7EB] bg-white p-5 shadow-md transition-[color,background-color,border-color,text-decoration-color,fill,stroke,transform] duration-200 hover:-translate-y-0.5 hover:border-[#9BB6E5] hover:shadow-lg">
+    <article className="rounded-2xl border border-[#E5E7EB] bg-white p-5 shadow-md transition-all duration-200 hover:-translate-y-0.5 hover:border-[#9BB6E5] hover:shadow-lg">
       <div className="flex items-start justify-between gap-3">
-        <h3 className="text-base font-semibold leading-6 text-[#1A3C6E] sm:text-lg">{scheme.title}</h3>
-        <span className={`rounded-full px-3 py-1 text-xs font-semibold ${getStatusStyle(status)}`}>
+        <h3 className="flex-1 text-base font-semibold leading-6 text-[#1A3C6E] sm:text-lg">{scheme.title}</h3>
+        <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${getStatusStyle(status)}`}>
           {status}
         </span>
       </div>
@@ -59,18 +59,19 @@ export default function SchemeCard({
         </p>
       </div>
 
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+      <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         {scheme.deadline && (
-          <span className="rounded-full bg-[#EEF2FF] px-3 py-1 text-xs font-medium text-[#1A3C6E]">
+          <span className="w-fit rounded-full bg-[#EEF2FF] px-3 py-1 text-xs font-medium text-[#1A3C6E]">
             Deadline: {scheme.deadline}
           </span>
         )}
-        <div className="grid w-full gap-2 sm:flex sm:w-auto">
+        <div className="flex w-full gap-2 sm:w-auto">
           <button
             type="button"
             onClick={onToggleSaved}
             disabled={saving}
-            className={`min-h-11 rounded-xl border px-3 py-2.5 text-sm font-medium transition-colors duration-200 ${
+            aria-label={isSaved ? "Remove from saved" : "Save item"}
+            className={`flex-1 rounded-xl border px-3 py-2.5 text-sm font-medium transition-colors duration-200 sm:flex-initial ${
               isSaved
                 ? "border-[#3B82F6] bg-[#DBEAFE] text-[#1E40AF] hover:bg-[#C7D9FE]"
                 : "border-[#E5E7EB] bg-white text-[#111827] hover:bg-[#F5F3EE]"
@@ -80,7 +81,7 @@ export default function SchemeCard({
           </button>
           <Link
             href={`/schemes/${scheme.id}`}
-            className="inline-flex min-h-11 items-center justify-center rounded-xl bg-[#1A3C6E] px-3 py-2.5 text-sm font-medium text-white transition-colors duration-200 hover:bg-[#3B82F6]"
+            className="flex-1 rounded-xl bg-[#1A3C6E] px-3 py-2.5 text-center text-sm font-medium text-white transition-colors duration-200 hover:bg-[#3B82F6] sm:flex-initial"
           >
             View Details
           </Link>

@@ -32,7 +32,7 @@ interface RecommendationsPageState {
 }
 
 export default function RecommendationsPage() {
-  const { session, authLoading } = useAuth();
+  const { authLoading } = useAuth();
   const [state, setState] = useState<RecommendationsPageState>({
     recommendations: [],
     loading: true,
@@ -51,7 +51,7 @@ export default function RecommendationsPage() {
       try {
         const currentUser = await getCurrentUser();
         setProfileIncomplete(currentUser.profile_completed !== true);
-      } catch (error) {
+      } catch {
         setProfileIncomplete(true);
       }
     }

@@ -97,16 +97,16 @@ export default function RegisterForm() {
 
   return (
     <div className="w-full max-w-md rounded-3xl border border-[#E5E7EB] bg-white p-6 text-[#111827] shadow-lg shadow-[#1A3C6E]/8 sm:p-8">
-      <div className="mb-8 text-center">
-        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-[#1A3C6E]/10 text-[#1A3C6E]">
+      <div className="mb-6 text-center sm:mb-8">
+        <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-[#1A3C6E]/10 text-[#1A3C6E] sm:mb-4">
           <Sparkles size={24} />
         </div>
 
-        <h2 className="text-2xl font-bold text-[#1A3C6E]">
+        <h2 className="text-xl font-bold text-[#1A3C6E] sm:text-2xl">
           Create your BharatLens account
         </h2>
 
-        <p className="mt-3 text-sm leading-6 text-[#111827]/65">
+        <p className="mt-2 text-sm leading-6 text-[#111827]/65 sm:mt-3">
           Start discovering verified government opportunities with AI
           assistance.
         </p>
@@ -116,7 +116,7 @@ export default function RegisterForm() {
         type="button"
         onClick={handleGoogleSignup}
         disabled={isSubmitting}
-        className={`mb-5 flex w-full items-center justify-center gap-3 rounded-2xl border px-4 py-3 text-sm font-semibold transition ${
+        className={`mb-5 flex min-h-[44px] w-full items-center justify-center gap-3 rounded-2xl border px-4 py-3 text-sm font-semibold transition ${
           isSubmitting
             ? "cursor-not-allowed border-[#E5E7EB] bg-[#F5F3EE] text-[#9CA3AF]"
             : "border-[#E5E7EB] bg-white text-[#111827] hover:border-[#1A3C6E] hover:bg-[#F5F3EE]"
@@ -145,7 +145,7 @@ export default function RegisterForm() {
             <input
               type="text"
               placeholder="Full name"
-              className="w-full rounded-2xl border border-[#E5E7EB] px-11 py-3 text-sm outline-none transition focus:border-[#3B82F6] focus:ring-2 focus:ring-[#3B82F6]/20"
+              className="min-h-[44px] w-full rounded-2xl border border-[#E5E7EB] bg-white px-11 py-3 text-sm outline-none transition focus:border-[#3B82F6] focus:ring-2 focus:ring-[#3B82F6]/20"
               value={name}
               onChange={(e) => setName(e.target.value)}
               disabled={isSubmitting}
@@ -166,7 +166,7 @@ export default function RegisterForm() {
             <input
               type="text"
               placeholder="Email or mobile number"
-              className="w-full rounded-2xl border border-[#E5E7EB] px-11 py-3 text-sm outline-none transition focus:border-[#3B82F6] focus:ring-2 focus:ring-[#3B82F6]/20"
+              className="min-h-[44px] w-full rounded-2xl border border-[#E5E7EB] bg-white px-11 py-3 text-sm outline-none transition focus:border-[#3B82F6] focus:ring-2 focus:ring-[#3B82F6]/20"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               disabled={isSubmitting}
@@ -185,7 +185,7 @@ export default function RegisterForm() {
             <input
               type="password"
               placeholder="Password"
-              className="w-full rounded-2xl border border-[#E5E7EB] px-11 py-3 text-sm outline-none transition focus:border-[#3B82F6] focus:ring-2 focus:ring-[#3B82F6]/20"
+              className="min-h-[44px] w-full rounded-2xl border border-[#E5E7EB] bg-white px-11 py-3 text-sm outline-none transition focus:border-[#3B82F6] focus:ring-2 focus:ring-[#3B82F6]/20"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               disabled={isSubmitting}
@@ -207,7 +207,7 @@ export default function RegisterForm() {
             <input
               type="password"
               placeholder="Confirm password"
-              className="w-full rounded-2xl border border-[#E5E7EB] px-11 py-3 text-sm outline-none transition focus:border-[#3B82F6] focus:ring-2 focus:ring-[#3B82F6]/20"
+              className="min-h-[44px] w-full rounded-2xl border border-[#E5E7EB] bg-white px-11 py-3 text-sm outline-none transition focus:border-[#3B82F6] focus:ring-2 focus:ring-[#3B82F6]/20"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               disabled={isSubmitting}
@@ -226,7 +226,7 @@ export default function RegisterForm() {
         <button
           type="submit"
           disabled={isSubmitting}
-          className={`flex w-full items-center justify-center gap-2 rounded-2xl py-3 font-semibold text-white transition ${
+          className={`flex min-h-[44px] w-full items-center justify-center gap-2 rounded-2xl py-3 font-semibold text-white transition ${
             isSubmitting
               ? "cursor-not-allowed bg-[#9BB6E5]"
               : "bg-[#1A3C6E] hover:bg-[#3B82F6]"

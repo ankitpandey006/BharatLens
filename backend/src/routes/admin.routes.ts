@@ -50,12 +50,15 @@ const router = Router();
 
 router.use(requireAuth, requireAdminOrModerator);
 
+// ── Stats & Management ──
 router.get("/stats", getAdminStatsHandler);
 router.get("/users", getAdminUsersHandler);
 router.patch("/users/:userId/role", validate(adminUserParamSchema, "params"), validate(adminUserRoleSchema, "body"), updateUserRoleHandler);
 router.get("/sources", getAdminSourcesHandler);
 router.patch("/sources/:id/verify", validate(adminSourceParamSchema, "params"), verifyAdminSourceHandler);
 router.get("/updates", getAdminUpdatesHandler);
+
+// ── Collected Data Pipeline ──
 router.get("/collected-data", validate(adminQuerySchema, "query"), getAdminCollectedDataHandler);
 router.get("/collected-data/:id", getAdminCollectedDataByIdHandler);
 router.patch(
@@ -77,11 +80,15 @@ router.patch(
 router.patch("/collected-data/:id/unpublish", unpublishCollectedDataHandler);
 router.patch("/collected-data/:id/delete", deleteCollectedDataHandler);
 router.get("/verification", validate(adminQuerySchema, "query"), getAdminCollectedDataHandler);
+
+// ── Status-based views (public table items grouped by status) ──
 router.get("/pending", validate(adminStatusQuerySchema, "query"), getPendingAdminItemsHandler);
 router.get("/approved", validate(adminStatusQuerySchema, "query"), getApprovedAdminItemsHandler);
 router.get("/rejected", validate(adminStatusQuerySchema, "query"), getRejectedAdminItemsHandler);
 router.get("/published", validate(adminStatusQuerySchema, "query"), getPublishedAdminItemsHandler);
 router.get("/items/:status", validate(adminStatusQuerySchema, "query"), getAdminItemsHandler);
+
+// ── Public table item CRUD (singular form: /items/:itemType/:itemId) ──
 router.get("/items/:itemType/:itemId", validate(adminItemParamSchema, "params"), getAdminItemHandler);
 router.patch(
   "/items/:itemType/:itemId/approve",
@@ -117,20 +124,7 @@ router.patch(
 );
 router.delete("/items/:itemType/:itemId", validate(adminItemParamSchema, "params"), deleteAdminItemHandler);
 
-router.get("/:itemType/:id", validate(adminItemParamSchema, "params"), getAdminItemHandler);
-router.patch("/:itemType/:id/approve", validate(adminItemParamSchema, "params"), approveAdminItemHandler);
-router.patch(
-  "/:itemType/:id/reject",
-  validate(adminItemParamSchema, "params"),
-  validate(adminReviewBodySchema, "body"),
-  rejectAdminItemHandler,
-);
-router.patch("/:itemType/:id/publish", validate(adminItemParamSchema, "params"), publishAdminItemHandler);
-router.patch("/:itemType/:id/unpublish", validate(adminItemParamSchema, "params"), unpublishAdminItemHandler);
-router.patch("/:itemType/:id", validate(adminItemParamSchema, "params"), validate(adminUpdateBodySchema, "body"), updateAdminItemHandler);
-router.delete("/:itemType/:id", validate(adminItemParamSchema, "params"), deleteAdminItemHandler);
-
-// Plural routes for schemes, scholarships, jobs, exams
+// ── Plural URL convention (legacy compat) ──
 router.get("/schemes/:id", injectItemType(), validate(adminItemParamSchema, "params"), getAdminItemHandler);
 router.patch("/schemes/:id/approve", injectItemType(), validate(adminItemParamSchema, "params"), approveAdminItemHandler);
 router.patch(

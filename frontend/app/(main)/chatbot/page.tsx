@@ -91,25 +91,25 @@ export default function ChatbotPage() {
   };
 
   return (
-    <div className="flex h-[calc(100vh-4rem)] bg-[#F5F3EE]">
-      <div className="mx-auto flex w-full max-w-4xl flex-col px-4 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
+    <div className="flex h-[calc(100dvh-4rem)] bg-[#F5F3EE]">
+      <div className="mx-auto flex w-full max-w-4xl flex-col px-3 py-3 sm:px-4 sm:py-4 lg:px-8 lg:py-8">
         {/* ─── Chat Card ───────────────────────────────────────── */}
-        <div className="flex flex-1 flex-col overflow-hidden rounded-2xl border border-[#E5E7EB] bg-white shadow-sm sm:rounded-3xl sm:shadow-md">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-[#E5E7EB] bg-white shadow-sm sm:rounded-3xl sm:shadow-md">
           {/* ─── Header ────────────────────────────────────────── */}
-          <div className="flex items-center gap-3 border-b border-[#E5E7EB] px-5 py-4 sm:px-6 sm:py-5">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#1A3C6E] to-[#3B82F6] text-white shadow-sm">
+          <div className="flex items-center gap-3 border-b border-[#E5E7EB] px-4 py-3 sm:px-6 sm:py-5">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#1A3C6E] to-[#3B82F6] text-white shadow-sm sm:h-10 sm:w-10">
               <Bot size={20} />
             </div>
             <div className="min-w-0">
-              <h1 className="truncate text-base font-bold text-[#1A3C6E] sm:text-lg">
+              <h1 className="truncate text-sm font-bold text-[#1A3C6E] sm:text-lg">
                 BharatLens AI
               </h1>
-              <p className="truncate text-xs text-[#111827]/50 sm:text-sm">
+              <p className="truncate text-xs text-[#111827]/50">
                 Ask about schemes, scholarships, jobs &amp; exams
               </p>
             </div>
             <div className="ml-auto flex items-center gap-2">
-              <span className="hidden h-2 w-2 rounded-full bg-green-500 sm:inline-block" />
+              <span className="h-2 w-2 rounded-full bg-green-500" />
               <span className="hidden text-xs font-medium text-green-600 sm:inline">
                 Online
               </span>
@@ -117,14 +117,14 @@ export default function ChatbotPage() {
           </div>
 
           {/* ─── Messages Area ─────────────────────────────────── */}
-          <div className="flex-1 space-y-4 overflow-y-auto px-5 py-5 sm:px-6 sm:py-6">
+          <div className="flex-1 space-y-4 overflow-y-auto overscroll-contain px-4 py-4 sm:px-6 sm:py-6">
             {messages.map((msg) => (
               <div
                 key={msg.id}
                 className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
               >
                 <div
-                  className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed sm:max-w-[75%] sm:px-5 sm:py-3.5 ${
+                  className={`max-w-[90%] rounded-2xl px-4 py-3 text-sm leading-relaxed sm:max-w-[75%] sm:px-5 sm:py-3.5 ${
                     msg.role === "user"
                       ? "bg-[#1A3C6E] text-white"
                       : "bg-[#F5F3EE] text-[#111827]"
@@ -138,7 +138,7 @@ export default function ChatbotPage() {
             {/* Typing indicator */}
             {sending && (
               <div className="flex justify-start">
-                <div className="flex items-center gap-2 rounded-2xl bg-[#F5F3EE] px-5 py-3.5">
+                <div className="flex items-center gap-2 rounded-2xl bg-[#F5F3EE] px-4 py-3 sm:px-5 sm:py-3.5">
                   <Loader2 size={16} className="animate-spin text-[#3B82F6]" />
                   <span className="text-sm text-[#111827]/60">Thinking...</span>
                 </div>
@@ -150,8 +150,8 @@ export default function ChatbotPage() {
 
           {/* ─── Welcome Suggestions ───────────────────────────── */}
           {!hasInteracted && !sending && (
-            <div className="border-t border-[#E5E7EB] bg-[#FAFAF9] px-5 py-4 sm:px-6">
-              <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-[#111827]/40">
+            <div className="border-t border-[#E5E7EB] bg-[#FAFAF9] px-4 py-3 sm:px-6 sm:py-4">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-[#111827]/40 sm:mb-3">
                 Suggested questions
               </p>
               <div className="flex flex-wrap gap-2">
@@ -163,7 +163,7 @@ export default function ChatbotPage() {
                       sendMessage(suggestion);
                     }}
                     disabled={sending}
-                    className="inline-flex items-center gap-1.5 rounded-full border border-[#E5E7EB] bg-white px-4 py-2 text-xs font-medium text-[#111827]/70 shadow-sm transition-all hover:border-[#3B82F6] hover:text-[#3B82F6] hover:shadow disabled:cursor-not-allowed disabled:opacity-50 sm:text-sm"
+                    className="inline-flex items-center gap-1.5 rounded-full border border-[#E5E7EB] bg-white px-3 py-1.5 text-xs font-medium text-[#111827]/70 shadow-sm transition-all hover:border-[#3B82F6] hover:text-[#3B82F6] hover:shadow disabled:cursor-not-allowed disabled:opacity-50 sm:px-4 sm:py-2 sm:text-sm"
                   >
                     {suggestion}
                     <ArrowRight size={14} />
@@ -174,8 +174,8 @@ export default function ChatbotPage() {
           )}
 
           {/* ─── Input Area ────────────────────────────────────── */}
-          <div className="border-t border-[#E5E7EB] bg-white px-4 py-4 sm:px-6">
-            <div className="flex items-center gap-3 rounded-2xl border border-[#E5E7EB] bg-[#FAFAF9] px-4 py-2.5 transition-all focus-within:border-[#3B82F6] focus-within:ring-2 focus-within:ring-[#3B82F6]/15 sm:px-5">
+          <div className="border-t border-[#E5E7EB] bg-white px-3 py-3 sm:px-6 sm:py-4">
+            <div className="flex items-center gap-3 rounded-2xl border border-[#E5E7EB] bg-[#FAFAF9] px-3 py-2 transition-all focus-within:border-[#3B82F6] focus-within:ring-2 focus-within:ring-[#3B82F6]/15 sm:px-5 sm:py-2.5">
               <input
                 ref={inputRef}
                 type="text"

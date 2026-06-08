@@ -104,7 +104,7 @@ export default function LoginForm() {
       try {
         const currentUser = await getCurrentUser();
         profileComplete = currentUser.profile_completed === true;
-      } catch (profileError) {
+      } catch {
         profileComplete = result.user.profile_completed === true;
       }
 
@@ -128,11 +128,11 @@ export default function LoginForm() {
 
   return (
     <div className="w-full max-w-md rounded-3xl border border-[#E5E7EB] bg-white p-6 text-[#111827] shadow-lg shadow-[#1A3C6E]/10 sm:p-8">
-      <div className="mb-8 text-center">
-        <h2 className="text-2xl font-bold text-[#1A3C6E]">
+      <div className="mb-6 text-center sm:mb-8">
+        <h2 className="text-xl font-bold text-[#1A3C6E] sm:text-2xl">
           Welcome back to BharatLens
         </h2>
-        <p className="mt-3 text-sm leading-6 text-[#111827]/65">
+        <p className="mt-2 text-sm leading-6 text-[#111827]/65 sm:mt-3">
           Access verified schemes, scholarships, jobs, exams and AI-powered
           recommendations.
         </p>
@@ -142,7 +142,7 @@ export default function LoginForm() {
         type="button"
         onClick={handleGoogleLogin}
         disabled={isSubmitting || authLoading}
-        className="mb-4 min-h-11 w-full rounded-2xl border border-[#E5E7EB] bg-white py-3 text-sm font-semibold text-[#111827] transition hover:border-[#1A3C6E] hover:bg-[#F5F3EE] disabled:cursor-not-allowed disabled:bg-[#F5F3EE] disabled:text-[#9CA3AF]"
+        className="mb-4 min-h-[44px] w-full rounded-2xl border border-[#E5E7EB] bg-white py-3 text-sm font-semibold text-[#111827] transition hover:border-[#1A3C6E] hover:bg-[#F5F3EE] disabled:cursor-not-allowed disabled:bg-[#F5F3EE] disabled:text-[#9CA3AF]"
       >
         {googleLoading ? "Redirecting..." : "Continue with Google"}
       </button>
@@ -162,7 +162,7 @@ export default function LoginForm() {
             id="email"
             type="email"
             placeholder="Enter your email"
-            className="min-h-11 w-full rounded-2xl border border-[#E5E7EB] px-4 py-3 text-sm outline-none transition focus:border-[#3B82F6] focus:ring-2 focus:ring-[#3B82F6]/20"
+            className="min-h-[44px] w-full rounded-2xl border border-[#E5E7EB] bg-white px-4 py-3 text-sm outline-none transition focus:border-[#3B82F6] focus:ring-2 focus:ring-[#3B82F6]/20"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             disabled={isSubmitting || authLoading}
@@ -182,7 +182,7 @@ export default function LoginForm() {
             id="password"
             type="password"
             placeholder="Password"
-            className="min-h-11 w-full rounded-2xl border border-[#E5E7EB] px-4 py-3 text-sm outline-none transition focus:border-[#3B82F6] focus:ring-2 focus:ring-[#3B82F6]/20"
+            className="min-h-[44px] w-full rounded-2xl border border-[#E5E7EB] bg-white px-4 py-3 text-sm outline-none transition focus:border-[#3B82F6] focus:ring-2 focus:ring-[#3B82F6]/20"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             disabled={isSubmitting || authLoading}
@@ -210,7 +210,7 @@ export default function LoginForm() {
         <button
           type="submit"
           disabled={isSubmitting || authLoading}
-          className="min-h-11 w-full rounded-2xl bg-[#1A3C6E] py-3 font-semibold text-white transition hover:bg-[#3B82F6] disabled:cursor-not-allowed disabled:bg-[#9BB6E5]"
+          className="min-h-[44px] w-full rounded-2xl bg-[#1A3C6E] py-3 font-semibold text-white transition hover:bg-[#3B82F6] disabled:cursor-not-allowed disabled:bg-[#9BB6E5]"
         >
           {emailLoading ? "Logging in..." : "Login"}
         </button>

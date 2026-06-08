@@ -33,15 +33,22 @@ function firstNonEmpty(...values: unknown[]) {
   return "";
 }
 
-function getRaw(item: AdminItem | null | undefined) {
-  return ((item as any)?.raw_data || (item as any)?.rawData || {}) as Record<string, any>;
+/** Cast item to Record for dynamic property access */
+function asRecord(item: AdminItem | Record<string, unknown>): Record<string, unknown> {
+  return item as unknown as Record<string, unknown>;
 }
 
-function getTargetId(item: AdminItem) {
+function getRaw(item: AdminItem | null | undefined): Record<string, unknown> {
+  const r = asRecord(item ?? {});
+  return (r.raw_data as Record<string, unknown>) || (r.rawData as Record<string, unknown>) || {};
+}
+
+function getTargetId(item: AdminItem): string {
+  const r = asRecord(item);
   return (
-    (item as any).collected_data_id ||
-    (item as any).collectedDataId ||
-    (item as any).collectedId ||
+    (r.collected_data_id as string) ||
+    (r.collectedDataId as string) ||
+    (r.collectedId as string) ||
     item.id
   );
 }
@@ -55,20 +62,15 @@ function normalizePublishType(type: unknown): PublishType {
   return "scheme";
 }
 
-function buildInitialPublishPayload(item: AdminItem) {
+function buildInitialPublishPayload(item: AdminItem): Record<string, unknown> {
   const raw = getRaw(item);
+  const r = asRecord(item);
 
-  const title = firstNonEmpty(
-    item.title,
-    raw.title,
-    raw.name,
-    (item as any).name,
-  );
-
+  const title = firstNonEmpty(item.title, raw.title, raw.name, r.name);
   const description = firstNonEmpty(
     item.description,
     item.summary,
-    (item as any).content,
+    r.content,
     item.rawContent,
     raw.description,
     raw.summary,
@@ -77,13 +79,13 @@ function buildInitialPublishPayload(item: AdminItem) {
   );
 
   const officialUrl = firstNonEmpty(
-    (item as any).official_url,
-    (item as any).officialUrl,
-    (item as any).apply_url,
-    (item as any).applyUrl,
+    r.official_url,
+    r.officialUrl,
+    r.apply_url,
+    r.applyUrl,
     item.sourceUrl,
-    (item as any).source_url,
-    (item as any).sourceUrl,
+    r.source_url,
+    r.sourceUrl,
     item.rawUrl,
     raw.official_url,
     raw.officialUrl,
@@ -96,7 +98,7 @@ function buildInitialPublishPayload(item: AdminItem) {
   );
 
   const provider = firstNonEmpty(
-    (item as any).provider,
+    r.provider,
     item.sourceName,
     raw.provider,
     raw.organization,
@@ -116,8 +118,8 @@ function buildInitialPublishPayload(item: AdminItem) {
     organization: firstNonEmpty(raw.organization, raw.department, provider),
     conducting_body: firstNonEmpty(raw.conducting_body, raw.conductingBody, provider),
     conductingBody: firstNonEmpty(raw.conducting_body, raw.conductingBody, provider),
-    location: firstNonEmpty((item as any).location, raw.location, item.state, "All India"),
-    state: firstNonEmpty((item as any).state, raw.state, "All India"),
+    location: firstNonEmpty(r.location, raw.location, item.state, "All India"),
+    state: firstNonEmpty(r.state, raw.state, "All India"),
     benefit: firstNonEmpty(item.benefits, raw.benefit, raw.benefits),
     benefits: firstNonEmpty(item.benefits, raw.benefits, raw.benefit),
     eligibility: firstNonEmpty(item.eligibility, raw.eligibility),
@@ -144,28 +146,33 @@ export default function VerificationDetailPanel({
   const [adminNotes, setAdminNotes] = useState("");
   const [isPublishOpen, setIsPublishOpen] = useState(false);
   const [publishType, setPublishType] = useState<PublishType>("scheme");
-  const [publishPayload, setPublishPayload] = useState<Record<string, any>>({});
-  const [publishErrors, setPublishErrors] = useState<Record<string, string>>({});
+  const [publishPayload, setPublishPayload] = useState<Record<string, unknown>>({});
   const [isSaved, setIsSaved] = useState(true);
   const [isActionLoading, setIsActionLoading] = useState(false);
   const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
+  // Initialize panel state when item changes - avoid sync setState in effect
   useEffect(() => {
     if (!item || !isOpen) return;
 
-    setEditedItem(item);
-    setAdminNotes("");
-    setIsPublishOpen(false);
-    setIsSaved(true);
-    setToast(null);
+    const timer = window.setTimeout(() => {
+      setEditedItem(item);
+      setAdminNotes("");
+      setIsPublishOpen(false);
+      setIsSaved(true);
+      setToast(null);
+    }, 0);
+
+    return () => window.clearTimeout(timer);
   }, [item, isOpen]);
 
-  useEffect(() => {
+  const publishErrors = useMemo(() => {
     const errors: Record<string, string> = {};
     const payload = publishPayload || {};
 
     const required = (key: string, message: string) => {
-      if (!payload[key] || String(payload[key]).trim() === "") {
+      const val = payload[key];
+      if (val === undefined || val === null || String(val).trim() === "") {
         errors[key] = message;
       }
     };
@@ -192,7 +199,7 @@ export default function VerificationDetailPanel({
       required("conducting_body", "Conducting body is required");
     }
 
-    setPublishErrors(errors);
+    return errors;
   }, [publishPayload, publishType]);
 
   useEffect(() => {
@@ -229,7 +236,8 @@ export default function VerificationDetailPanel({
   };
 
   const handleCopyUrl = async () => {
-    const url = firstNonEmpty(currentItem.sourceUrl, currentItem.rawUrl, (currentItem as any).official_url);
+    const r = asRecord(currentItem);
+    const url = firstNonEmpty(currentItem.sourceUrl, currentItem.rawUrl, r.official_url);
     if (!url) return;
     await navigator.clipboard.writeText(url);
     setToast({ type: "success", message: "URL copied." });
@@ -241,30 +249,24 @@ export default function VerificationDetailPanel({
     setIsActionLoading(true);
 
     try {
-      const url = firstNonEmpty(
-        editedItem.sourceUrl,
-        (editedItem as any).official_url,
-        (editedItem as any).apply_url,
-        editedItem.rawUrl,
-      );
+      const r = asRecord(editedItem);
+      const url = firstNonEmpty(editedItem.sourceUrl, r.official_url, r.apply_url, editedItem.rawUrl);
 
       const updates: Record<string, unknown> = {
+        official_url: url || null,
+        apply_url: url || null,
+        source_url: url || null,
         title: editedItem.title?.trim() || null,
         description: firstNonEmpty(editedItem.summary, editedItem.description, editedItem.title) || null,
         eligibility: editedItem.eligibility?.trim() || null,
         benefits: editedItem.benefits?.trim() || null,
         deadline: editedItem.deadline?.trim() || null,
-        category: editedItem.category?.trim() || null,
-        official_url: url || null,
-        apply_url: url || null,
-        source_url: url || null,
         admin_notes: adminNotes?.trim() || null,
       };
 
       const targetId = getTargetId(currentItem);
-      const res = await editCollectedData(targetId, updates);
+      await editCollectedData(targetId, updates);
 
-      setEditedItem({ ...currentItem, ...(res as Partial<AdminItem>) });
       setIsSaved(true);
       setToast({ type: "success", message: "Changes saved successfully." });
       onActionComplete?.();
@@ -284,16 +286,12 @@ export default function VerificationDetailPanel({
     try {
       const targetId = getTargetId(currentItem);
       const res = await approveCollectedData(targetId, adminNotes || undefined);
-      const response = res as any;
 
       setEditedItem({
         ...currentItem,
-        ...response,
-        type: response.item_type || response.type || currentItem.type,
-        title: response.title || currentItem.title,
-        summary: response.description || response.summary || currentItem.summary,
+        ...(res as Partial<AdminItem>),
         status: "approved" as AdminItem["status"],
-      });
+      } as AdminItem);
 
       setIsSaved(true);
       onStatusChange(currentItem.id, "approved");
@@ -314,7 +312,7 @@ export default function VerificationDetailPanel({
 
     try {
       const targetId = getTargetId(currentItem);
-      const res = await rejectCollectedData(
+      await rejectCollectedData(
         targetId,
         adminNotes || "Rejected by admin",
         adminNotes || undefined,
@@ -322,9 +320,8 @@ export default function VerificationDetailPanel({
 
       setEditedItem({
         ...currentItem,
-        ...(res as Partial<AdminItem>),
         status: "rejected" as AdminItem["status"],
-      });
+      } as AdminItem);
 
       onStatusChange(currentItem.id, "rejected");
       onActionComplete?.();
@@ -360,7 +357,7 @@ export default function VerificationDetailPanel({
         ...currentItem,
         ...(res as Partial<AdminItem>),
         status: "approved",
-      });
+      } as AdminItem);
 
       setIsSaved(true);
       onStatusChange(currentItem.id, "approved");
@@ -383,13 +380,12 @@ export default function VerificationDetailPanel({
 
     try {
       const targetId = getTargetId(currentItem);
-      const res = await unpublishCollectedData(targetId);
+      await unpublishCollectedData(targetId);
 
       setEditedItem({
         ...currentItem,
-        ...(res as Partial<AdminItem>),
-        status: "approved",
-      });
+        status: "approved" as AdminItem["status"],
+      } as AdminItem);
 
       onStatusChange(currentItem.id, "approved");
       onActionComplete?.();
@@ -447,15 +443,15 @@ export default function VerificationDetailPanel({
         base.official_url,
       );
 
-      const finalPayload: Record<string, any> = {
+      const finalPayload: Record<string, unknown> = {
         ...base,
         ...publishPayload,
         item_type: publishType,
-        title: firstNonEmpty(publishPayload.title, base.title),
-        description: firstNonEmpty(publishPayload.description, base.description, publishPayload.title, base.title),
+        title: firstNonEmpty(publishPayload.title as string, base.title as string),
+        description: firstNonEmpty(publishPayload.description as string, base.description as string, publishPayload.title as string, base.title as string),
         official_url: officialUrl,
-        apply_url: firstNonEmpty(publishPayload.apply_url, officialUrl),
-        source_url: firstNonEmpty(publishPayload.source_url, officialUrl),
+        apply_url: firstNonEmpty(publishPayload.apply_url as string, officialUrl),
+        source_url: firstNonEmpty(publishPayload.source_url as string, officialUrl),
       };
 
       if (!finalPayload.description) {
@@ -464,44 +460,27 @@ export default function VerificationDetailPanel({
 
       if (publishType === "exam") {
         finalPayload.conducting_body = firstNonEmpty(
-          publishPayload.conducting_body,
-          publishPayload.conductingBody,
-          finalPayload.conducting_body,
-          finalPayload.provider,
+          publishPayload.conducting_body as string,
+          publishPayload.conductingBody as string,
+          finalPayload.conducting_body as string,
+          finalPayload.provider as string,
         );
       }
 
       if (publishType === "job") {
         finalPayload.organization = firstNonEmpty(
-          publishPayload.organization,
-          finalPayload.organization,
-          finalPayload.provider,
+          publishPayload.organization as string,
+          finalPayload.organization as string,
+          finalPayload.provider as string,
         );
       }
 
-      if (publishType === "scholarship") {
-        finalPayload.provider = firstNonEmpty(publishPayload.provider, finalPayload.provider);
-        if (finalPayload.amount) {
-          const amount = Number(finalPayload.amount);
-          finalPayload.amount = Number.isFinite(amount) ? amount : 0;
-        }
-      }
-
-      if (process.env.NODE_ENV === "development") {
-        console.log("[Admin Publish] Final payload:", {
-          targetId: getTargetId(currentItem),
-          itemType: publishType,
-          payload: finalPayload,
-        });
-      }
-
-      const res = await publishCollectedData(getTargetId(currentItem), publishType, finalPayload);
+      await publishCollectedData(getTargetId(currentItem), publishType, finalPayload);
 
       setEditedItem({
         ...currentItem,
-        ...(res as Partial<AdminItem>),
         status: "published" as AdminItem["status"],
-      });
+      } as AdminItem);
 
       setIsPublishOpen(false);
       onStatusChange(currentItem.id, "published");
@@ -518,18 +497,18 @@ export default function VerificationDetailPanel({
     }
   };
 
-  const urlForDisplay = firstNonEmpty(
-    (currentItem as any).official_url,
-    (currentItem as any).apply_url,
-    currentItem.sourceUrl,
-    currentItem.rawUrl,
-  );
+  const r = asRecord(currentItem);
+  const urlForDisplay = firstNonEmpty(r.official_url, r.apply_url, currentItem.sourceUrl, currentItem.rawUrl);
 
   return (
     <>
       <div className="fixed inset-0 z-40 bg-black/40" onClick={onClose} />
 
-      <div className="fixed right-0 top-0 z-50 h-full w-full max-w-2xl bg-white shadow-2xl">
+      <div className="fixed inset-x-0 top-0 z-50 h-full w-full overflow-y-auto bg-white shadow-2xl sm:right-0 sm:left-auto sm:w-full sm:max-w-2xl">
+        {/* Mobile drag handle */}
+        <div className="sticky top-0 z-10 flex justify-center bg-white pt-2 sm:hidden">
+          <div className="h-1.5 w-12 rounded-full bg-[#E5E7EB]" />
+        </div>
         {toast && (
           <div
             className={`fixed right-4 top-24 z-70 rounded-xl px-4 py-3 text-sm shadow-lg ${
@@ -541,15 +520,15 @@ export default function VerificationDetailPanel({
         )}
 
         <div className="flex h-full flex-col">
-          <div className="flex items-center justify-between border-b border-[#E5E7EB] px-6 py-5">
-            <div>
-              <h2 className="text-2xl font-bold text-[#1A3C6E]">Review Item</h2>
-              <p className="mt-1 text-sm text-[#111827]/60">ID: {currentItem.id}</p>
+          <div className="flex items-center justify-between border-b border-[#E5E7EB] px-4 py-4 sm:px-6 sm:py-5">
+            <div className="min-w-0 flex-1">
+              <h2 className="text-lg font-bold text-[#1A3C6E] sm:text-2xl">Review Item</h2>
+              <p className="mt-0.5 truncate text-xs text-[#111827]/60 sm:text-sm">ID: {currentItem.id}</p>
             </div>
 
             <button
               onClick={onClose}
-              className="flex h-11 w-11 items-center justify-center rounded-lg border border-[#E5E7EB] hover:bg-[#F5F3EE]"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[#E5E7EB] hover:bg-[#F5F3EE] sm:h-11 sm:w-11"
             >
               <X size={20} />
             </button>
@@ -616,7 +595,7 @@ export default function VerificationDetailPanel({
                 <label className="mb-2 block text-sm font-medium text-[#111827]">Summary / Description</label>
                 <textarea
                   value={currentItem.summary || currentItem.description || ""}
-                  onChange={(e) => updateEdited({ summary: e.target.value, description: e.target.value } as any)}
+                  onChange={(e) => updateEdited({ summary: e.target.value, description: e.target.value } as Partial<AdminItem>)}
                   rows={3}
                   disabled={isRejectedStatus || isPublishedStatus}
                   className="w-full rounded-lg border border-[#E5E7EB] px-4 py-3 text-sm outline-none focus:border-[#3B82F6] focus:ring-2 focus:ring-[#3B82F6]/20 disabled:bg-slate-100"
@@ -661,7 +640,7 @@ export default function VerificationDetailPanel({
                 <input
                   type="url"
                   value={urlForDisplay}
-                  onChange={(e) => updateEdited({ sourceUrl: e.target.value } as any)}
+                  onChange={(e) => updateEdited({ sourceUrl: e.target.value } as Partial<AdminItem>)}
                   disabled={isRejectedStatus}
                   placeholder="https://example.com/apply"
                   className="w-full rounded-lg border border-[#E5E7EB] px-4 py-3 text-sm outline-none focus:border-[#3B82F6] focus:ring-2 focus:ring-[#3B82F6]/20 disabled:bg-slate-100"
@@ -874,11 +853,11 @@ export default function VerificationDetailPanel({
                     const nextType = e.target.value as PublishType;
                     const base = buildInitialPublishPayload(currentItem);
                     setPublishType(nextType);
-                    setPublishPayload((prev) => ({
+                    setPublishPayload({
                       ...base,
-                      ...prev,
+                      ...publishPayload,
                       item_type: nextType,
-                    }));
+                    });
                   }}
                   className="mt-1 w-full rounded-lg border px-3 py-2"
                 >
@@ -892,7 +871,7 @@ export default function VerificationDetailPanel({
               <div>
                 <label className="block text-sm font-medium">Title *</label>
                 <input
-                  value={publishPayload.title || ""}
+                  value={String(publishPayload.title || "")}
                   onChange={(e) => setPublishPayload({ ...publishPayload, title: e.target.value })}
                   className="mt-1 w-full rounded-lg border px-3 py-2"
                 />
@@ -903,7 +882,7 @@ export default function VerificationDetailPanel({
                 <label className="block text-sm font-medium">Description *</label>
                 <textarea
                   rows={3}
-                  value={publishPayload.description || ""}
+                  value={String(publishPayload.description || "")}
                   onChange={(e) => setPublishPayload({ ...publishPayload, description: e.target.value })}
                   className="mt-1 w-full rounded-lg border px-3 py-2"
                 />
@@ -916,13 +895,13 @@ export default function VerificationDetailPanel({
                 <label className="block text-sm font-medium">Apply / Official URL *</label>
                 <input
                   type="url"
-                  value={publishPayload.official_url || ""}
+                  value={String(publishPayload.official_url || "")}
                   onChange={(e) =>
                     setPublishPayload({
                       ...publishPayload,
                       official_url: e.target.value,
                       apply_url: e.target.value,
-                      source_url: publishPayload.source_url || e.target.value,
+                      source_url: (publishPayload.source_url as string) || e.target.value,
                     })
                   }
                   placeholder="https://example.com/apply"
@@ -937,7 +916,7 @@ export default function VerificationDetailPanel({
                 <label className="block text-sm font-medium">Eligibility</label>
                 <textarea
                   rows={2}
-                  value={publishPayload.eligibility || ""}
+                  value={String(publishPayload.eligibility || "")}
                   onChange={(e) => setPublishPayload({ ...publishPayload, eligibility: e.target.value })}
                   className="mt-1 w-full rounded-lg border px-3 py-2"
                 />
@@ -965,7 +944,7 @@ export default function VerificationDetailPanel({
                   <div>
                     <label className="block text-sm font-medium">Category *</label>
                     <input
-                      value={publishPayload.category || ""}
+                      value={String(publishPayload.category || "")}
                       onChange={(e) => setPublishPayload({ ...publishPayload, category: e.target.value })}
                       className="mt-1 w-full rounded-lg border px-3 py-2"
                     />
@@ -977,7 +956,7 @@ export default function VerificationDetailPanel({
                   <div>
                     <label className="block text-sm font-medium">Provider *</label>
                     <input
-                      value={publishPayload.provider || ""}
+                      value={String(publishPayload.provider || "")}
                       onChange={(e) => setPublishPayload({ ...publishPayload, provider: e.target.value })}
                       className="mt-1 w-full rounded-lg border px-3 py-2"
                     />
@@ -989,7 +968,7 @@ export default function VerificationDetailPanel({
                   <div>
                     <label className="block text-sm font-medium">Benefit</label>
                     <input
-                      value={publishPayload.benefit || publishPayload.benefits || ""}
+                      value={String(publishPayload.benefit || publishPayload.benefits || "")}
                       onChange={(e) =>
                         setPublishPayload({
                           ...publishPayload,
@@ -1008,7 +987,7 @@ export default function VerificationDetailPanel({
                   <div>
                     <label className="block text-sm font-medium">Provider *</label>
                     <input
-                      value={publishPayload.provider || ""}
+                      value={String(publishPayload.provider || "")}
                       onChange={(e) => setPublishPayload({ ...publishPayload, provider: e.target.value })}
                       className="mt-1 w-full rounded-lg border px-3 py-2"
                     />
@@ -1021,7 +1000,7 @@ export default function VerificationDetailPanel({
                     <label className="block text-sm font-medium">Amount</label>
                     <input
                       type="number"
-                      value={publishPayload.amount || ""}
+                      value={String(publishPayload.amount || "")}
                       onChange={(e) => setPublishPayload({ ...publishPayload, amount: e.target.value })}
                       className="mt-1 w-full rounded-lg border px-3 py-2"
                     />
@@ -1034,7 +1013,7 @@ export default function VerificationDetailPanel({
                   <div>
                     <label className="block text-sm font-medium">Organization *</label>
                     <input
-                      value={publishPayload.organization || ""}
+                      value={String(publishPayload.organization || "")}
                       onChange={(e) => setPublishPayload({ ...publishPayload, organization: e.target.value })}
                       className="mt-1 w-full rounded-lg border px-3 py-2"
                     />
@@ -1046,7 +1025,7 @@ export default function VerificationDetailPanel({
                   <div>
                     <label className="block text-sm font-medium">Location *</label>
                     <input
-                      value={publishPayload.location || ""}
+                      value={String(publishPayload.location || "")}
                       onChange={(e) => setPublishPayload({ ...publishPayload, location: e.target.value })}
                       className="mt-1 w-full rounded-lg border px-3 py-2"
                     />
@@ -1058,7 +1037,7 @@ export default function VerificationDetailPanel({
                   <div>
                     <label className="block text-sm font-medium">Vacancies</label>
                     <input
-                      value={publishPayload.vacancies || ""}
+                      value={String(publishPayload.vacancies || "")}
                       onChange={(e) => setPublishPayload({ ...publishPayload, vacancies: e.target.value })}
                       className="mt-1 w-full rounded-lg border px-3 py-2"
                     />
@@ -1071,7 +1050,7 @@ export default function VerificationDetailPanel({
                   <div>
                     <label className="block text-sm font-medium">Conducting Body *</label>
                     <input
-                      value={publishPayload.conducting_body || ""}
+                      value={String(publishPayload.conducting_body || "")}
                       onChange={(e) =>
                         setPublishPayload({
                           ...publishPayload,
@@ -1125,4 +1104,4 @@ export default function VerificationDetailPanel({
       )}
     </>
   );
-} 
+}
