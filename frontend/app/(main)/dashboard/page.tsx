@@ -126,7 +126,7 @@ export default function DashboardPage() {
           <div className="absolute -right-16 -top-16 h-64 w-64 rounded-full bg-[#3B82F6]/20 blur-3xl" />
           <div className="absolute -bottom-16 left-10 h-64 w-64 rounded-full bg-[#9BB6E5]/20 blur-3xl" />
 
-          <div className="relative z-10 grid gap-6 p-6 sm:gap-8 sm:p-8 lg:grid-cols-[1.4fr_0.7fr] lg:items-center lg:p-10">
+          <div className="relative z-10 grid gap-5 p-5 sm:gap-8 sm:p-8 lg:grid-cols-[1.4fr_0.7fr] lg:items-center lg:p-10">
             {/* Left */}
             <div>
               <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 text-xs font-semibold text-white ring-1 ring-white/15 sm:px-4 sm:py-2">
@@ -134,16 +134,16 @@ export default function DashboardPage() {
                 AI-powered dashboard
               </div>
 
-              <h1 className="mt-4 text-xl font-bold leading-tight sm:mt-5 sm:text-3xl lg:text-4xl">
+              <h1 className="mt-4 text-xl font-bold leading-tight sm:mt-5 sm:text-3xl lg:text-4xl text-balance max-sm:text-lg">
                 Your personalized workspace
               </h1>
 
-              <p className="mt-2 max-w-xl text-sm leading-6 text-white/70 sm:mt-3 sm:text-base">
+              <p className="mt-2 max-w-xl text-sm leading-6 text-white/70 sm:mt-3 sm:text-base text-balance">
                 Track schemes, scholarships, jobs, exams, and AI recommendations
                 tailored for your profile.
               </p>
 
-              <div className="mt-4 flex flex-wrap gap-3 sm:mt-5">
+              <div className="mt-4 flex flex-wrap gap-2 sm:mt-5 sm:gap-3">
                 {profile.completed ? (
                   <Link
                     href="/profile"
@@ -205,7 +205,7 @@ export default function DashboardPage() {
 
         {/* ─── Incomplete Profile Banner ─── */}
         {!profile.completed && profile.missingFields.length > 0 && (
-          <section className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4">
+          <section className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 break-words">
             <div className="flex items-start gap-3">
               <AlertCircle size={18} className="mt-0.5 shrink-0 text-amber-600" />
               <div className="flex-1 min-w-0">
@@ -226,7 +226,7 @@ export default function DashboardPage() {
         )}
 
         {/* ─── Stats Cards ─── */}
-        <section className="mt-6 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+        <section className="mt-6 grid grid-cols-2 gap-2.5 sm:gap-4 lg:grid-cols-4">
           {statCards.map((item) => {
             const Icon = item.icon;
 
@@ -256,7 +256,7 @@ export default function DashboardPage() {
         </section>
 
         {/* ─── Main Content Grid ─── */}
-        <section className="mt-6 grid gap-6 lg:grid-cols-[1fr_340px]">
+        <section className="mt-6 grid gap-5 lg:gap-6 lg:grid-cols-[1fr_300px] xl:grid-cols-[1fr_340px]">
           {/* Left Column */}
           <div className="grid gap-5 sm:gap-6">
             {/* AI Recommendations */}
@@ -367,7 +367,7 @@ export default function DashboardPage() {
                   notificationsList.slice(0, 3).map((n) => (
                     <div
                       key={n.id}
-                      className={`rounded-xl p-3 text-sm leading-5 ${
+                      className={`rounded-xl p-3 text-sm leading-5 break-words ${
                         n.is_read
                           ? "bg-white text-[#111827]/60"
                           : "bg-[#F5F3EE] text-[#111827]/80"
@@ -397,7 +397,7 @@ export default function DashboardPage() {
               </p>
               <Link
                 href="/chatbot"
-                className="mt-4 inline-flex items-center gap-1 rounded-full bg-white px-4 py-2 text-xs font-semibold text-[#1A3C6E] transition hover:bg-[#F5F3EE]"
+                className="mt-4 flex w-full items-center justify-center gap-1 rounded-full bg-white px-4 py-2 text-xs font-semibold text-[#1A3C6E] transition hover:bg-[#F5F3EE] sm:inline-flex sm:w-auto"
               >
                 Open assistant <ArrowRight size={12} />
               </Link>

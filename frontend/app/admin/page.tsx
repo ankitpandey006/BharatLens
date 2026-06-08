@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Users, Layers, Award, Briefcase, Clock, Bell } from "lucide-react";
 import AdminStatCard from "@/components/admin/AdminStatCard";
 import {
   fetchAdminStats,
@@ -53,42 +54,42 @@ export default function AdminDashboard() {
         </p>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 sm:gap-6 md:grid-cols-2 lg:grid-cols-3">
         <AdminStatCard
           label="Total Users"
           value={stats?.total_users ?? 0}
           color="blue"
-          icon="Users"
+          icon={<Users size={24} />}
         />
         <AdminStatCard
           label="Total Schemes"
           value={stats?.total_schemes ?? 0}
           color="green"
-          icon="Layers"
+          icon={<Layers size={24} />}
         />
         <AdminStatCard
           label="Total Scholarships"
           value={stats?.total_scholarships ?? 0}
           color="yellow"
-          icon="Award"
+          icon={<Award size={24} />}
         />
         <AdminStatCard
           label="Total Jobs"
           value={stats?.total_jobs ?? 0}
           color="purple"
-          icon="Briefcase"
+          icon={<Briefcase size={24} />}
         />
         <AdminStatCard
           label="Pending Verification"
           value={stats?.pending_items ?? 0}
           color="yellow"
-          icon="Clock"
+          icon={<Clock size={24} />}
         />
         <AdminStatCard
           label="Unread Notifications"
           value={stats?.total_notifications ?? 0}
           color="red"
-          icon="Bell"
+          icon={<Bell size={24} />}
         />
       </div>
 
