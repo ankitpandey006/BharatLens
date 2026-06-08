@@ -15,6 +15,7 @@ import collectorRoutes from "./collector.routes";
 import pdfRoutes from "./pdf.routes";
 import docsRoutes from "./docs.routes";
 import testRoutes from "./test.route";
+import dashboardRoutes from "./dashboard.routes";
 
 export {
   schemeRoutes,
@@ -34,4 +35,5 @@ export {
   pdfRoutes,
   docsRoutes,
   testRoutes,
+  dashboardRoutes,
 };

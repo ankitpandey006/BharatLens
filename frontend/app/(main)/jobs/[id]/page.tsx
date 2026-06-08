@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { Job } from "@/lib/api/content-api";
 import { checkSavedItem, fetchJobById, fetchJobs, saveItem, unsaveItem } from "@/lib/api/content-api";
+import DetailLoading from "@/components/details/DetailLoading";
 
 interface JobDetailPageProps {
   params: Promise<{ id: string }>;
@@ -66,11 +67,7 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
   }, [paramId]);
 
   if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-300 border-t-blue-600"></div>
-      </div>
-    );
+    return <DetailLoading />;
   }
 
   if (error || !job) {

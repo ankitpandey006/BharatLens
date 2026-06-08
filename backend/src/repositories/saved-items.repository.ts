@@ -13,7 +13,7 @@ export interface SavedItem {
 }
 
 export interface SavedItemsRepository {
-  listSavedItems(userId: string): Promise<SavedItem[]>;
+  listSavedItems(userId: string, page?: number, limit?: number): Promise<{ items: SavedItem[]; total: number }>;
   addSavedItem(userId: string, itemId: string, type: SavedItemType): Promise<SavedItem>;
   removeSavedItem(id: string, userId: string): Promise<boolean>;
   removeSavedItemByItem(userId: string, itemType: SavedItemType, itemId: string): Promise<boolean>;
@@ -21,18 +21,24 @@ export interface SavedItemsRepository {
   getSavedItemById(id: string, userId: string): Promise<SavedItem | null>;
 }
 
-export async function listSavedItems(userId: string): Promise<SavedItem[]> {
-  const { data, error } = await supabase
+export async function listSavedItems(userId: string, page = 1, limit = 20): Promise<{ items: SavedItem[]; total: number }> {
+  const offset = (page - 1) * limit;
+
+  const { data, error, count } = await supabase
     .from("saved_items")
-    .select("*")
+    .select("*", { count: "exact" })
     .eq("user_id", userId)
-    .order("saved_at", { ascending: false });
+    .order("saved_at", { ascending: false })
+    .range(offset, offset + limit - 1);
 
   if (error) {
     throw new AppError(`Failed to fetch saved items: ${error.message}`, 500);
   }
 
-  return (data ?? []) as SavedItem[];
+  return {
+    items: (data ?? []) as SavedItem[],
+    total: count ?? 0,
+  };
 }
 
 export async function addSavedItem(userId: string, itemId: string, type: SavedItemType): Promise<SavedItem> {

@@ -15,7 +15,6 @@ import {
   Award,
   Briefcase,
   BookOpen,
-  Settings,
   LogOut,
   Home,
   Compass,
@@ -33,8 +32,6 @@ const exploreLinks = [
 
 const profileLinks = [
   { href: "/profile", label: "My Profile", icon: UserIcon },
-  { href: "/settings", label: "Settings", icon: Settings },
-  { href: "/saved", label: "Saved Items", icon: Bookmark },
 ];
 
 function isActive(pathname: string, href: string) {

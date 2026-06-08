@@ -7,6 +7,7 @@ import SchemeCard from "@/components/cards/SchemeCard";
 import ScholarshipCard from "@/components/cards/ScholarshipCard";
 import JobCard from "@/components/cards/JobCard";
 import ExamCard from "@/components/cards/ExamCard";
+import CardSkeleton from "@/components/ui/skeletons/CardSkeleton";
 import {
   fetchRecommendations,
   fetchSavedItems,
@@ -219,8 +220,12 @@ export default function RecommendationsPage() {
     return (
       <section className="min-h-screen bg-[#F5F3EE] px-4 py-8 sm:px-6">
         <div className="mx-auto max-w-7xl">
-          <div className="text-center">
-            <p className="text-sm text-[#111827]/60">Loading...</p>
+          <div className="rounded-2xl border border-[#E5E7EB] bg-white p-5 shadow-sm sm:p-6">
+            <div className="w-full max-w-md space-y-3">
+              <div className="h-4 w-32 animate-pulse rounded bg-[#E5E7EB]/70" />
+              <div className="h-9 w-56 animate-pulse rounded bg-[#E5E7EB]/70 sm:h-10" />
+              <div className="h-4 w-full animate-pulse rounded bg-[#E5E7EB]/70" />
+            </div>
           </div>
         </div>
       </section>
@@ -271,11 +276,10 @@ export default function RecommendationsPage() {
         )}
 
         {state.loading ? (
-          <div className="mt-8 text-center">
-            <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-[#E5E7EB] border-t-[#3B82F6]"></div>
-            <p className="mt-4 text-sm text-[#111827]/60">
-              Loading recommendations...
-            </p>
+          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <CardSkeleton key={i} lines={2} />
+            ))}
           </div>
         ) : state.recommendations.length === 0 ? (
           <div className="mt-8 rounded-xl border border-[#E5E7EB] bg-white p-8 text-center">

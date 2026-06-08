@@ -16,8 +16,11 @@ export const listSavedItemsHandler = asyncHandler(async (req: Request, res: Resp
     return sendError(res, "Authentication required", 401);
   }
 
-  const result = await fetchSavedItems(user.id);
-  sendSuccess(res, "Saved items fetched successfully", result);
+  const page = Math.max(1, parseInt(req.query.page as string, 10) || 1);
+  const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string, 10) || 20));
+
+  const result = await fetchSavedItems(user.id, page, limit);
+  sendSuccess(res, "Saved items fetched successfully", result.items, result.pagination);
 });
 
 export const saveItemHandler = asyncHandler(async (req: Request, res: Response) => {

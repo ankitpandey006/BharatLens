@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import ExamCard from "@/components/cards/ExamCard";
 import ListingSearchFilter from "@/components/filters/ListingSearchFilter";
 import { fetchExams, fetchSavedItems, saveItem, unsaveItem } from "@/lib/api/content-api";
+import CardSkeleton from "@/components/ui/skeletons/CardSkeleton";
 import type { Exam } from "@/lib/api/content-api";
 
 interface ExamsPageState {
@@ -146,11 +147,10 @@ export default function ExamsPage() {
         </div>
 
         {state.loading ? (
-          <div className="mt-8 text-center">
-            <div className="inline-block">
-              <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#9BB6E5] border-t-[#1A3C6E]" />
-            </div>
-            <p className="mt-3 text-sm font-medium text-[#1A3C6E]">Loading exams...</p>
+          <div className="mt-8 grid gap-5 xl:grid-cols-2">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <CardSkeleton key={i} />
+            ))}
           </div>
         ) : state.error ? (
           <div className="mt-8 rounded-2xl border border-[#E5E7EB] bg-white p-8 text-center shadow-md">

@@ -20,6 +20,7 @@ import {
   pdfRoutes,
   docsRoutes,
   testRoutes,
+  dashboardRoutes,
 } from "./routes";
 import { env } from "./config/env";
 import { notFoundHandler } from "./middlewares/not-found.middleware";
@@ -68,6 +69,7 @@ app.use("/api/saved-items", savedItemsRoutes);
 app.use("/api/collectors", collectorRoutes);
 app.use("/api/pdf", pdfRoutes);
 app.use("/api/test-db", testRoutes);
+app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/schemes", schemeRoutes);
 app.use("/api/scholarships", scholarshipRoutes);
 app.use("/api/jobs", jobRoutes);

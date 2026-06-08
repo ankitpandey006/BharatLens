@@ -2,7 +2,76 @@
 
 import { useEffect, useState } from "react";
 import SavedItemCard from "@/components/cards/SavedItemCard";
+import type { SavedItemCardData } from "@/components/cards/SavedItemCard";
 import { fetchSavedItems, type SavedItem, unsaveItem } from "@/lib/api/content-api";
+import CardSkeleton from "@/components/ui/skeletons/CardSkeleton";
+
+/** Safely extract a string field from item_data, checking multiple key variations */
+function getField(data: Record<string, unknown> | undefined, ...keys: string[]): string | undefined {
+  if (!data) return undefined;
+  for (const key of keys) {
+    const val = data[key];
+    if (typeof val === "string" && val.length > 0) return val;
+  }
+  return undefined;
+}
+
+/** Map a saved item from the API into a SavedItemCardData for the card component */
+function toCardData(item: SavedItem): SavedItemCardData {
+  const d = item.item_data as Record<string, unknown> | undefined;
+
+  // Determine status from item status field
+  let status: SavedItemCardData["status"] = "Open";
+  const apiStatus = getField(d, "status")?.toLowerCase();
+  if (apiStatus === "active") status = "Open";
+  else if (apiStatus === "closing soon") status = "Closing Soon";
+  else if (apiStatus === "closed") status = "Closed";
+  else if (apiStatus === "upcoming") status = "Upcoming";
+
+  // Title: try title, name, or fallback to "Untitled"
+  const title = getField(d, "title", "name") ?? "Untitled";
+
+  // Provider: try provider, organization, department, conductingBody, examBody
+  const provider = getField(d, "provider", "organization", "department", "conductingBody", "examBody", "conducting_body", "exam_body") ?? "";
+
+  // Description
+  const description = getField(d, "description") ?? "";
+
+  // Deadline: try multiple field names
+  const deadline = getField(
+    d,
+    "deadline",
+    "applicationDeadline",
+    "application_deadline",
+    "application_end_date",
+    "examDate",
+    "exam_date",
+    "applicationWindow",
+    "application_window",
+  ) ?? "";
+
+  // Apply URL: try apply_url, official_url, source_url
+  const applyUrl = getField(d, "apply_url", "official_url", "source_url");
+
+  // Detail page URL
+  const typePath = item.item_type === "scheme" ? "schemes"
+    : item.item_type === "scholarship" ? "scholarships"
+    : item.item_type === "job" ? "jobs"
+    : "exams";
+  const detailUrl = `/${typePath}/${item.item_id}`;
+
+  return {
+    id: item.id,
+    type: (item.item_type.charAt(0).toUpperCase() + item.item_type.slice(1)) as SavedItemCardData["type"],
+    title,
+    provider,
+    description,
+    deadline,
+    status,
+    applyUrl,
+    detailUrl,
+  };
+}
 
 export default function SavedPage() {
   const [savedItems, setSavedItems] = useState<SavedItem[]>([]);
@@ -22,7 +91,7 @@ export default function SavedPage() {
         setTotalPages(result.totalPages);
       } catch (err) {
         setError(
-          err instanceof Error ? err.message : "Failed to load saved items"
+          err instanceof Error ? err.message : "Failed to load saved items",
         );
       } finally {
         setLoading(false);
@@ -37,9 +106,9 @@ export default function SavedPage() {
     try {
       await unsaveItem(item.item_id, item.item_type);
       setSavedItems((prev) => prev.filter((savedItem) => savedItem.id !== item.id));
-    } catch (error) {
-      console.error("Failed to remove saved item:", error);
-      setError(error instanceof Error ? error.message : "Unable to remove saved item");
+    } catch (err) {
+      console.error("Failed to remove saved item:", err);
+      setError(err instanceof Error ? err.message : "Unable to remove saved item");
     } finally {
       setRemovingId(null);
     }
@@ -48,6 +117,7 @@ export default function SavedPage() {
   return (
     <section className="min-h-screen bg-[#F5F3EE] px-4 py-8 sm:px-6">
       <div className="mx-auto max-w-7xl">
+        {/* Header */}
         <div className="rounded-2xl border border-[#E5E7EB] bg-white p-5 shadow-md sm:p-6">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
@@ -62,70 +132,55 @@ export default function SavedPage() {
               </p>
             </div>
             <span className="rounded-full bg-[#EEF2FF] px-4 py-2 text-sm font-semibold text-[#1A3C6E]">
-              {savedItems.length} saved
+              {loading ? "—" : `${savedItems.length} saved`}
             </span>
           </div>
         </div>
 
-        {loading ? (
-          <div className="mt-8 flex justify-center">
-            <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-300 border-t-blue-600"></div>
+        {/* Loading - skeleton cards */}
+        {loading && (
+          <div className="mt-8 grid gap-5 xl:grid-cols-2">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <CardSkeleton key={i} />
+            ))}
           </div>
-        ) : error ? (
+        )}
+
+        {/* Error */}
+        {!loading && error && (
           <div className="mt-8 rounded-2xl border border-[#E5E7EB] bg-red-50 p-8 text-center shadow-md">
             <p className="text-lg font-semibold text-red-600">{error}</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="mt-3 rounded-full bg-red-600 px-5 py-2 text-sm font-semibold text-white hover:bg-red-700"
+            >
+              Retry
+            </button>
           </div>
-        ) : savedItems.length === 0 ? (
+        )}
+
+        {/* Empty */}
+        {!loading && !error && savedItems.length === 0 && (
           <div className="mt-8 rounded-2xl border border-[#E5E7EB] bg-white p-8 text-center shadow-md">
             <p className="text-lg font-semibold text-[#1A3C6E]">No saved items yet</p>
             <p className="mt-1 text-sm text-[#111827]/70">
               Save listings from BharatLens to access them quickly here.
             </p>
           </div>
-        ) : (
+        )}
+
+        {/* Saved Items Grid */}
+        {!loading && !error && savedItems.length > 0 && (
           <>
             <div className="mt-8 grid gap-5 xl:grid-cols-2">
-              {savedItems.map((item) => {
-                // Map API status to ListingStatus
-                let status: "Open" | "Closing Soon" | "Closed" | "Upcoming" = "Open";
-                if (
-                  "item_data" in item &&
-                  item.item_data &&
-                  "status" in item.item_data
-                ) {
-                  const apiStatus = item.item_data.status?.toLowerCase();
-                  if (apiStatus === "active") status = "Open";
-                  else if (apiStatus === "closing soon") status = "Closing Soon";
-                  else if (apiStatus === "closed") status = "Closed";
-                  else if (apiStatus === "upcoming") status = "Upcoming";
-                }
-
-                return (
-                  <SavedItemCard
-                    key={item.id}
-                    item={{
-                      id: item.id,
-                      title: item.item_data?.title || "Unknown",
-                      description:
-                        "item_data" in item && item.item_data
-                          ? item.item_data.description || ""
-                          : "",
-                      deadline:
-                        "item_data" in item && item.item_data && "deadline" in item.item_data
-                          ? item.item_data.deadline || ""
-                          : "",
-                      status,
-                      provider:
-                        "item_data" in item && item.item_data && "provider" in item.item_data
-                          ? item.item_data.provider || ""
-                          : "",
-                      type: item.item_type as "Scheme" | "Scholarship" | "Job" | "Exam",
-                    }}
-                    onRemove={() => handleRemove(item)}
-                    removing={removingId === item.id}
-                  />
-                );
-              })}
+              {savedItems.map((item) => (
+                <SavedItemCard
+                  key={item.id}
+                  item={toCardData(item)}
+                  onRemove={() => handleRemove(item)}
+                  removing={removingId === item.id}
+                />
+              ))}
             </div>
 
             {/* Pagination */}

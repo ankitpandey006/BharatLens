@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { Scholarship } from "@/lib/api/content-api";
 import { checkSavedItem, fetchScholarshipById, fetchScholarships, saveItem, unsaveItem } from "@/lib/api/content-api";
+import DetailLoading from "@/components/details/DetailLoading";
 
 interface ScholarshipDetailPageProps {
   params: Promise<{ id: string }>;
@@ -69,11 +70,7 @@ export default function ScholarshipDetailPage({ params }: ScholarshipDetailPageP
   }, [paramId]);
 
   if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-300 border-t-blue-600"></div>
-      </div>
-    );
+    return <DetailLoading />;
   }
 
   if (error || !scholarship) {

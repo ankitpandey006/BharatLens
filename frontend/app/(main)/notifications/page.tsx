@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import NotificationCard from "@/components/cards/NotificationCard";
 import { fetchNotifications, type Notification } from "@/lib/api/content-api";
+import ListSkeleton from "@/components/ui/skeletons/ListSkeleton";
 
 export default function NotificationsPage() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -56,8 +57,8 @@ export default function NotificationsPage() {
         </div>
 
         {loading ? (
-          <div className="mt-8 flex justify-center">
-            <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-300 border-t-blue-600"></div>
+          <div className="mt-8">
+            <ListSkeleton count={5} compact />
           </div>
         ) : error ? (
           <div className="mt-8 rounded-2xl border border-[#E5E7EB] bg-red-50 p-8 text-center shadow-md">

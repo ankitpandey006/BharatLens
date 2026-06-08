@@ -1,19 +1,31 @@
-import type { SavedItem } from "@/types";
+import { ExternalLink } from "lucide-react";
+
+export interface SavedItemCardData {
+  id: string;
+  type: "Scheme" | "Scholarship" | "Job" | "Exam";
+  title: string;
+  provider: string;
+  description: string;
+  deadline: string;
+  status: "Open" | "Closing Soon" | "Closed" | "Upcoming";
+  applyUrl?: string;
+  detailUrl?: string;
+}
 
 interface SavedItemCardProps {
-  item: SavedItem;
+  item: SavedItemCardData;
   onRemove?: () => void;
   removing?: boolean;
 }
 
-const typeStyles: Record<SavedItem["type"], string> = {
+const typeStyles: Record<SavedItemCardData["type"], string> = {
   Scheme: "bg-[#DBEAFE] text-[#1A3C6E]",
   Scholarship: "bg-[#E0E7FF] text-[#3730A3]",
   Job: "bg-[#DCFCE7] text-[#166534]",
   Exam: "bg-[#FEF3C7] text-[#92400E]",
 };
 
-const statusStyles: Record<SavedItem["status"], string> = {
+const statusStyles: Record<SavedItemCardData["status"], string> = {
   Open: "bg-[#DBEAFE] text-[#1A3C6E]",
   "Closing Soon": "bg-[#FEF3C7] text-[#92400E]",
   Closed: "bg-[#F3F4F6] text-[#374151]",
@@ -21,29 +33,86 @@ const statusStyles: Record<SavedItem["status"], string> = {
 };
 
 export default function SavedItemCard({ item, onRemove, removing }: SavedItemCardProps) {
+  const applyUrl = item.applyUrl;
+  const hasDeadline = item.deadline && item.deadline.length > 0;
+
   return (
-    <article className="rounded-2xl border border-[#E5E7EB] bg-white p-5 shadow-md transition-[color,background-color,border-color,text-decoration-color,fill,stroke,transform] duration-200 hover:-translate-y-0.5 hover:border-[#9BB6E5] hover:shadow-lg">
+    <article className="rounded-2xl border border-[#E5E7EB] bg-white p-5 shadow-md transition-all duration-200 hover:-translate-y-0.5 hover:border-[#9BB6E5] hover:shadow-lg">
+      {/* Type + Status badges */}
       <div className="flex items-center justify-between gap-3">
         <span className={`rounded-full px-3 py-1 text-xs font-semibold ${typeStyles[item.type]}`}>{item.type}</span>
         <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusStyles[item.status]}`}>{item.status}</span>
       </div>
-      <h3 className="mt-3 text-base font-semibold leading-6 text-[#1A3C6E] sm:text-lg">{item.title}</h3>
-      <p className="mt-1 text-sm text-[#111827]/70">{item.provider}</p>
-      <p className="mt-2 line-clamp-2 text-sm leading-6 text-[#111827]/80">{item.description}</p>
+
+      {/* Title */}
+      <h3 className="mt-3 text-base font-semibold leading-6 text-[#1A3C6E] sm:text-lg">
+        {item.title || "Untitled"}
+      </h3>
+
+      {/* Provider / Organization */}
+      {item.provider && (
+        <p className="mt-1 text-sm text-[#111827]/70">{item.provider}</p>
+      )}
+
+      {/* Description */}
+      {item.description && (
+        <p className="mt-2 line-clamp-2 text-sm leading-6 text-[#111827]/80">{item.description}</p>
+      )}
+
+      {/* Actions row */}
       <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-[#E5E7EB] pt-4">
-        <span className="rounded-full bg-[#EEF2FF] px-3 py-1 text-xs font-medium text-[#1A3C6E]">Deadline: {item.deadline}</span>
-        <button
-          type="button"
-          onClick={onRemove}
-          disabled={removing}
-          className={`min-h-[44px] rounded-xl border px-3 py-2.5 text-sm font-medium transition-colors duration-200 ${
-            removing
-              ? "border-[#9CA3AF] bg-[#F3F4F6] text-[#6B7280] cursor-wait opacity-70"
-              : "border-[#E5E7EB] bg-white text-[#111827] hover:bg-[#F5F3EE]"
-          }`}
-        >
-          {removing ? "Removing..." : "Remove"}
-        </button>
+        {/* Deadline badge */}
+        <span className={`rounded-full px-3 py-1 text-xs font-medium ${
+          hasDeadline
+            ? "bg-[#EEF2FF] text-[#1A3C6E]"
+            : "bg-[#F3F4F6] text-[#6B7280]"
+        }`}>
+          {hasDeadline ? `Deadline: ${item.deadline}` : "No deadline"}
+        </span>
+
+        {/* Action buttons */}
+        <div className="flex gap-2">
+          {/* Open / Detail link */}
+          {item.detailUrl && (
+            <a
+              href={item.detailUrl}
+              className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl border border-[#E5E7EB] bg-white px-3 py-2.5 text-sm font-medium text-[#1A3C6E] transition-colors duration-200 hover:bg-[#F5F3EE]"
+            >
+              <ExternalLink size={14} />
+              Open
+            </a>
+          )}
+
+          {/* Apply button */}
+          {applyUrl ? (
+            <a
+              href={applyUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl bg-[#1A3C6E] px-4 py-2.5 text-sm font-semibold text-white transition-colors duration-200 hover:bg-[#1A3C6E]/90"
+            >
+              Apply
+            </a>
+          ) : (
+            <span className="inline-flex min-h-[44px] items-center rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] px-4 py-2.5 text-sm font-medium text-[#9CA3AF] cursor-not-allowed">
+              Apply link unavailable
+            </span>
+          )}
+
+          {/* Remove button */}
+          <button
+            type="button"
+            onClick={onRemove}
+            disabled={removing}
+            className={`min-h-[44px] rounded-xl border px-3 py-2.5 text-sm font-medium transition-colors duration-200 ${
+              removing
+                ? "border-[#9CA3AF] bg-[#F3F4F6] text-[#6B7280] cursor-wait opacity-70"
+                : "border-[#E5E7EB] bg-white text-[#111827] hover:bg-[#F5F3EE]"
+            }`}
+          >
+            {removing ? "Removing..." : "Remove"}
+          </button>
+        </div>
       </div>
     </article>
   );
