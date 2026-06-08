@@ -1,7 +1,7 @@
 export default function DashboardSkeleton() {
   return (
-    <div className="min-h-screen bg-[#F5F3EE]">
-      <div className="mx-auto w-full max-w-7xl px-5 py-6 sm:px-6 lg:px-8">
+    <div className="min-h-screen w-full max-w-full bg-[#F5F3EE]">
+      <div className="w-full max-w-full overflow-hidden px-4 py-4 sm:px-6 sm:py-6 lg:mx-auto lg:max-w-7xl lg:px-8">
         {/* Hero skeleton */}
         <div className="animate-pulse rounded-2xl bg-[#1A3C6E]/90 p-4 sm:rounded-[2rem] sm:p-8 lg:p-10">
           <div className="grid gap-4 sm:gap-8 lg:grid-cols-[1.4fr_0.7fr] lg:items-center">
@@ -23,9 +23,9 @@ export default function DashboardSkeleton() {
         </div>
 
         {/* Stats skeleton */}
-        <div className="mt-4 grid grid-cols-2 gap-2 sm:gap-4 lg:grid-cols-4 sm:mt-6">
+        <div className="mt-4 grid w-full max-w-full grid-cols-2 gap-2 sm:gap-4 lg:grid-cols-4 sm:mt-6">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="rounded-xl border border-[#E5E7EB] bg-white p-3 sm:rounded-2xl sm:p-5">
+            <div key={i} className="w-full overflow-hidden rounded-xl border border-[#E5E7EB] bg-white p-3 sm:rounded-2xl sm:p-5">
               <div className="flex items-center justify-between">
                 <div className="h-8 w-8 rounded-lg bg-[#F5F3EE] sm:h-11 sm:w-11 sm:rounded-xl" />
                 <div className="h-2.5 w-6 rounded bg-[#F5F3EE] sm:h-4 sm:w-10" />
@@ -37,9 +37,9 @@ export default function DashboardSkeleton() {
         </div>
 
         {/* Content skeleton */}
-        <div className="mt-4 grid gap-4 sm:mt-6 sm:gap-5 lg:gap-6 lg:grid-cols-[1fr_300px] xl:grid-cols-[1fr_340px]">
-          <div className="space-y-4 sm:space-y-6">
-            <div className="rounded-xl border border-[#E5E7EB] bg-white p-4 sm:rounded-2xl sm:p-6">
+        <div className="mt-4 grid w-full max-w-full gap-4 sm:mt-6 sm:gap-5 lg:gap-6 lg:grid-cols-[1fr_300px] xl:grid-cols-[1fr_340px]">
+          <div className="w-full max-w-full space-y-4 sm:space-y-6">
+            <div className="w-full overflow-hidden rounded-xl border border-[#E5E7EB] bg-white p-4 sm:rounded-2xl sm:p-6">
               <div className="h-5 w-32 rounded-md bg-[#F5F3EE] sm:h-7 sm:w-48 sm:rounded-lg" />
               <div className="mt-3 space-y-2 sm:mt-5 sm:space-y-4">
                 {Array.from({ length: 2 }).map((_, i) => (
@@ -47,7 +47,7 @@ export default function DashboardSkeleton() {
                 ))}
               </div>
             </div>
-            <div className="rounded-xl border border-[#E5E7EB] bg-white p-4 sm:rounded-2xl sm:p-6">
+            <div className="w-full overflow-hidden rounded-xl border border-[#E5E7EB] bg-white p-4 sm:rounded-2xl sm:p-6">
               <div className="h-5 w-24 rounded-md bg-[#F5F3EE] sm:h-7 sm:w-36 sm:rounded-lg" />
               <div className="mt-3 space-y-1.5 sm:mt-5 sm:space-y-3">
                 {Array.from({ length: 3 }).map((_, i) => (
@@ -56,8 +56,8 @@ export default function DashboardSkeleton() {
               </div>
             </div>
           </div>
-          <div className="space-y-4 sm:space-y-6">
-            <div className="rounded-xl border border-[#E5E7EB] bg-white p-4 sm:rounded-2xl sm:p-6">
+          <div className="w-full max-w-full space-y-4 sm:space-y-6">
+            <div className="w-full overflow-hidden rounded-xl border border-[#E5E7EB] bg-white p-4 sm:rounded-2xl sm:p-6">
               <div className="h-5 w-24 rounded-md bg-[#F5F3EE] sm:h-7 sm:w-32 sm:rounded-lg" />
               <div className="mt-3 space-y-1.5 sm:mt-4 sm:space-y-3">
                 {Array.from({ length: 3 }).map((_, i) => (
@@ -65,8 +65,8 @@ export default function DashboardSkeleton() {
                 ))}
               </div>
             </div>
-            <div className="h-36 rounded-xl bg-[#1A3C6E]/80 sm:h-48 sm:rounded-2xl" />
-            <div className="rounded-xl border border-[#E5E7EB] bg-white p-4 sm:rounded-2xl sm:p-6">
+            <div className="w-full overflow-hidden rounded-xl bg-[#1A3C6E]/80 sm:h-48 sm:rounded-2xl" />
+            <div className="w-full overflow-hidden rounded-xl border border-[#E5E7EB] bg-white p-4 sm:rounded-2xl sm:p-6">
               <div className="h-5 w-20 rounded-md bg-[#F5F3EE] sm:h-7 sm:w-28 sm:rounded-lg" />
               <div className="mt-2 h-6 rounded-md bg-[#F5F3EE] sm:mt-4 sm:h-10 sm:rounded-lg" />
             </div>
