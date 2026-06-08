@@ -35,7 +35,7 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-[#F5F3EE] text-[#111827]">
       <section className="mx-auto max-w-7xl px-5 py-8 sm:px-6 lg:px-8">
-        <div className="relative overflow-hidden rounded-[2rem] bg-[#1A3C6E] px-6 py-10 text-white shadow-xl sm:px-10 lg:px-14 lg:py-16">
+        <div className="relative overflow-hidden rounded-4xl bg-[#1A3C6E] px-6 py-10 text-white shadow-xl sm:px-10 lg:px-14 lg:py-16">
           <div className="absolute right-0 top-0 h-72 w-72 rounded-full bg-[#3B82F6]/20 blur-3xl" />
           <div className="absolute bottom-0 left-0 h-72 w-72 rounded-full bg-[#9BB6E5]/20 blur-3xl" />
 
@@ -150,7 +150,7 @@ export default function Home() {
       </section>
 
       <section className="mx-auto max-w-7xl px-5 pb-20 sm:px-6 lg:px-8">
-        <div className="rounded-[2rem] border border-[#E5E7EB] bg-white p-8 text-center shadow-xl shadow-[#1A3C6E]/10 md:p-10">
+        <div className="rounded-4xlß border border-[#E5E7EB] bg-white p-8 text-center shadow-xl shadow-[#1A3C6E]/10 md:p-10">
           <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#3B82F6]">
             Start using BharatLens
           </p>
