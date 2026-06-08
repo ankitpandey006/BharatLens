@@ -42,18 +42,18 @@ function EmptyState({
   action?: { label: string; href: string };
 }) {
   return (
-    <div className="rounded-xl border border-dashed border-[#E5E7EB] bg-white/50 p-6 text-center">
-      <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-[#F5F3EE]">
-        <Icon size={22} className="text-[#1A3C6E]/50" />
+    <div className="rounded-xl border border-dashed border-[#E5E7EB] bg-white/50 p-4 text-center sm:p-6">
+      <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-lg bg-[#F5F3EE] sm:h-12 sm:w-12 sm:rounded-xl">
+        <Icon size={18} className="text-[#1A3C6E]/50 sm:size-[22px]" />
       </div>
-      <p className="mt-3 text-sm font-semibold text-[#111827]">{title}</p>
-      <p className="mt-1 text-xs text-[#111827]/50">{description}</p>
+      <p className="mt-2 text-xs font-semibold text-[#111827] sm:mt-3 sm:text-sm">{title}</p>
+      <p className="mt-0.5 text-[11px] text-[#111827]/50 sm:mt-1 sm:text-xs">{description}</p>
       {action && (
         <Link
           href={action.href}
-          className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-[#3B82F6] hover:text-[#1A3C6E]"
+          className="mt-2 inline-flex items-center gap-1 text-[11px] font-semibold text-[#3B82F6] hover:text-[#1A3C6E] sm:mt-3 sm:text-xs"
         >
-          {action.label} <ArrowRight size={12} />
+          {action.label} <ArrowRight size={10} className="sm:size-3" />
         </Link>
       )}
     </div>
@@ -120,13 +120,13 @@ export default function DashboardPage() {
         </div>
       )}
 
-      <div className="mx-auto w-full max-w-7xl px-5 py-6 sm:px-6 lg:px-8">
+      <div className="mx-auto w-full max-w-7xl px-4 py-4 sm:px-6 sm:py-6 lg:px-8">
         {/* ─── Hero Section ─── */}
-        <section className="relative overflow-hidden rounded-[2rem] bg-[#1A3C6E] shadow-xl shadow-[#1A3C6E]/12">
+        <section className="relative overflow-hidden rounded-[2rem] bg-[#1A3C6E] shadow-xl shadow-[#1A3C6E]/12 max-sm:rounded-xl max-sm:shadow-md">
           <div className="absolute -right-16 -top-16 h-64 w-64 rounded-full bg-[#3B82F6]/20 blur-3xl" />
           <div className="absolute -bottom-16 left-10 h-64 w-64 rounded-full bg-[#9BB6E5]/20 blur-3xl" />
 
-          <div className="relative z-10 grid gap-5 p-5 sm:gap-8 sm:p-8 lg:grid-cols-[1.4fr_0.7fr] lg:items-center lg:p-10">
+          <div className="relative z-10 grid gap-4 p-4 sm:gap-8 sm:p-8 lg:grid-cols-[1.4fr_0.7fr] lg:items-center lg:p-10">
             {/* Left */}
             <div>
               <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 text-xs font-semibold text-white ring-1 ring-white/15 sm:px-4 sm:py-2">
@@ -138,7 +138,7 @@ export default function DashboardPage() {
                 Your personalized workspace
               </h1>
 
-              <p className="mt-2 max-w-xl text-sm leading-6 text-white/70 sm:mt-3 sm:text-base text-balance">
+              <p className="mt-2 max-w-xl text-xs leading-5 text-white/70 sm:mt-3 sm:text-base sm:leading-6 text-balance">
                 Track schemes, scholarships, jobs, exams, and AI recommendations
                 tailored for your profile.
               </p>
@@ -147,55 +147,55 @@ export default function DashboardPage() {
                 {profile.completed ? (
                   <Link
                     href="/profile"
-                    className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-semibold text-[#1A3C6E] shadow-sm transition hover:bg-[#F5F3EE] sm:px-5 sm:py-2.5"
+                    className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-[#1A3C6E] shadow-sm transition hover:bg-[#F5F3EE] sm:gap-2 sm:px-5 sm:py-2.5 sm:text-sm"
                   >
-                    <CheckCircle2 size={16} />
+                    <CheckCircle2 size={14} className="sm:size-4" />
                     Profile Complete
                   </Link>
                 ) : (
                   <Link
                     href="/profile/setup"
-                    className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-semibold text-[#1A3C6E] shadow-sm transition hover:bg-[#F5F3EE] sm:px-5 sm:py-2.5"
+                    className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-[#1A3C6E] shadow-sm transition hover:bg-[#F5F3EE] sm:gap-2 sm:px-5 sm:py-2.5 sm:text-sm"
                   >
                     Complete Profile ({profile.completionPercent}%)
                   </Link>
                 )}
                 <Link
                   href="/chatbot"
-                  className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/20 sm:px-5 sm:py-2.5"
+                  className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-white/20 sm:gap-2 sm:px-5 sm:py-2.5 sm:text-sm"
                 >
-                  <Bot size={16} />
+                  <Bot size={14} className="sm:size-4" />
                   Ask AI
                 </Link>
               </div>
             </div>
 
             {/* Right - Profile Strength */}
-            <div className="rounded-2xl border border-white/15 bg-white/10 p-4 backdrop-blur-sm sm:p-5">
+            <div className="rounded-xl border border-white/15 bg-white/10 p-3 backdrop-blur-sm sm:rounded-2xl sm:p-5">
               <div className="flex items-center justify-between">
-                <p className="text-xs font-semibold text-white/80">
+                <p className="text-[11px] font-semibold text-white/80 sm:text-xs">
                   {profile.completed ? "Profile Complete" : "Profile Strength"}
                 </p>
-                <span className="rounded-full bg-white/20 px-2 py-0.5 text-xs font-bold text-white ring-1 ring-white/10 sm:px-3 sm:py-1">
+                <span className="rounded-full bg-white/20 px-1.5 py-0.5 text-[10px] font-bold text-white ring-1 ring-white/10 sm:px-3 sm:py-1 sm:text-xs">
                   {profile.completionPercent}%
                 </span>
               </div>
 
-              <div className="mt-3 h-2 rounded-full bg-white/15 sm:h-2.5">
+              <div className="mt-2 h-1.5 rounded-full bg-white/15 sm:mt-3 sm:h-2.5">
                 <div
-                  className="h-2 rounded-full bg-gradient-to-r from-[#9BB6E5] to-[#3B82F6] transition-all duration-700 ease-out sm:h-2.5"
+                  className="h-1.5 rounded-full bg-gradient-to-r from-[#9BB6E5] to-[#3B82F6] transition-all duration-700 ease-out sm:h-2.5"
                   style={{ width: `${profile.completionPercent}%` }}
                 />
               </div>
 
               {!profile.completed && profile.missingFields.length > 0 && (
-                <p className="mt-2 text-xs leading-5 text-white/60 sm:mt-3">
+                <p className="mt-1.5 text-[10px] leading-4 text-white/60 sm:mt-3 sm:text-xs sm:leading-5">
                   Complete your profile ({profile.completionPercent}%) for personalized recommendations.
                 </p>
               )}
 
               {profile.completed && (
-                <p className="mt-2 text-xs leading-5 text-white/60 sm:mt-3">
+                <p className="mt-1.5 text-[10px] leading-4 text-white/60 sm:mt-3 sm:text-xs sm:leading-5">
                   ✓ Your profile is complete. You&apos;ll get the best AI recommendations!
                 </p>
               )}
@@ -205,19 +205,19 @@ export default function DashboardPage() {
 
         {/* ─── Incomplete Profile Banner ─── */}
         {!profile.completed && profile.missingFields.length > 0 && (
-          <section className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 break-words">
-            <div className="flex items-start gap-3">
-              <AlertCircle size={18} className="mt-0.5 shrink-0 text-amber-600" />
+          <section className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 break-words sm:mt-4 sm:rounded-2xl sm:p-4">
+            <div className="flex items-start gap-2 sm:gap-3">
+              <AlertCircle size={16} className="mt-0.5 shrink-0 text-amber-600 sm:size-[18px]" />
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-bold text-amber-900">Profile incomplete</p>
-                <p className="mt-1 text-xs text-amber-700">
+                <p className="text-xs font-bold text-amber-900 sm:text-sm">Profile incomplete</p>
+                <p className="mt-0.5 text-[11px] text-amber-700 sm:mt-1 sm:text-xs">
                   Complete the remaining {profile.missingFields.length} field{profile.missingFields.length !== 1 ? "s" : ""}
                   {" "}({profile.completionPercent}% done) for better recommendations.
                 </p>
               </div>
               <Link
                 href="/profile/setup"
-                className="shrink-0 rounded-full bg-amber-600 px-4 py-2 text-xs font-semibold text-white transition hover:bg-amber-700"
+                className="shrink-0 rounded-full bg-amber-600 px-3 py-1.5 text-[11px] font-semibold text-white transition hover:bg-amber-700 sm:px-4 sm:py-2 sm:text-xs"
               >
                 Complete
               </Link>
@@ -226,7 +226,7 @@ export default function DashboardPage() {
         )}
 
         {/* ─── Stats Cards ─── */}
-        <section className="mt-6 grid grid-cols-2 gap-2.5 sm:gap-4 lg:grid-cols-4">
+        <section className="mt-4 grid grid-cols-2 gap-2 sm:gap-4 lg:grid-cols-4 sm:mt-6">
           {statCards.map((item) => {
             const Icon = item.icon;
 
@@ -235,19 +235,19 @@ export default function DashboardPage() {
                 key={item.label}
                 href={item.href}
                 prefetch={false}
-                className="group relative overflow-hidden rounded-2xl border border-[#E5E7EB] bg-white p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-[#1A3C6E]/8 sm:p-5"
+                className="group relative overflow-hidden rounded-xl border border-[#E5E7EB] bg-white p-3 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-[#1A3C6E]/8 sm:rounded-2xl sm:p-5"
               >
                 <div className="flex items-center justify-between">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#F5F3EE] group-hover:bg-[#1A3C6E]/5 sm:h-11 sm:w-11">
-                    <Icon size={20} className={item.color} />
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#F5F3EE] group-hover:bg-[#1A3C6E]/5 sm:h-11 sm:w-11 sm:rounded-xl">
+                    <Icon size={16} className={item.color + " sm:size-5"} />
                   </div>
-                  <ChevronRight size={14} className="text-[#111827]/20 transition group-hover:translate-x-0.5 group-hover:text-[#111827]/40" />
+                  <ChevronRight size={12} className="text-[#111827]/20 transition group-hover:translate-x-0.5 group-hover:text-[#111827]/40 sm:size-[14px]" />
                 </div>
 
-                <p className="mt-3 text-xl font-bold text-[#1A3C6E] sm:mt-4 sm:text-2xl">
+                <p className="mt-1.5 text-base font-bold text-[#1A3C6E] sm:mt-4 sm:text-2xl">
                   {item.value.toLocaleString()}
                 </p>
-                <p className="mt-0.5 text-xs font-medium text-[#111827]/60">
+                <p className="text-[11px] font-medium text-[#111827]/60 sm:text-xs">
                   {item.label}
                 </p>
               </Link>
@@ -256,20 +256,20 @@ export default function DashboardPage() {
         </section>
 
         {/* ─── Main Content Grid ─── */}
-        <section className="mt-6 grid gap-5 lg:gap-6 lg:grid-cols-[1fr_300px] xl:grid-cols-[1fr_340px]">
+        <section className="mt-4 grid gap-4 sm:mt-6 sm:gap-5 lg:gap-6 lg:grid-cols-[1fr_300px] xl:grid-cols-[1fr_340px]">
           {/* Left Column */}
-          <div className="grid gap-5 sm:gap-6">
+          <div className="grid gap-4 sm:gap-6">
             {/* AI Recommendations */}
-            <div className="rounded-2xl border border-[#E5E7EB] bg-white p-5 shadow-sm sm:p-6">
+            <div className="rounded-xl border border-[#E5E7EB] bg-white p-4 shadow-sm sm:rounded-2xl sm:p-6">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Zap size={18} className="text-[#1A3C6E] sm:size-5" />
-                  <h2 className="text-base font-bold text-[#111827] sm:text-lg">AI Recommendations</h2>
+                <div className="flex items-center gap-1.5 sm:gap-2">
+                  <Zap size={16} className="text-[#1A3C6E] sm:size-5" />
+                  <h2 className="text-sm font-bold text-[#111827] sm:text-lg">AI Recommendations</h2>
                 </div>
                 {hasRecommendations && (
                   <Link
                     href="/recommendations"
-                    className="text-xs font-semibold text-[#3B82F6] transition hover:text-[#1A3C6E]"
+                    className="text-[11px] font-semibold text-[#3B82F6] transition hover:text-[#1A3C6E] sm:text-xs"
                   >
                     View all
                   </Link>
@@ -311,10 +311,10 @@ export default function DashboardPage() {
             </div>
 
             {/* Today's Updates */}
-            <div className="rounded-2xl border border-[#E5E7EB] bg-white p-5 shadow-sm sm:p-6">
-              <div className="flex items-center gap-2">
-                <CalendarDays size={18} className="text-[#1A3C6E] sm:size-5" />
-                <h2 className="text-base font-bold text-[#111827] sm:text-lg">Recent Updates</h2>
+            <div className="rounded-xl border border-[#E5E7EB] bg-white p-4 shadow-sm sm:rounded-2xl sm:p-6">
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <CalendarDays size={16} className="text-[#1A3C6E] sm:size-5" />
+                <h2 className="text-sm font-bold text-[#111827] sm:text-lg">Recent Updates</h2>
               </div>
 
               <div className="mt-4 space-y-2">
@@ -347,16 +347,16 @@ export default function DashboardPage() {
           </div>
 
           {/* Right Sidebar */}
-          <aside className="space-y-5">
+          <aside className="space-y-4 sm:space-y-5">
             {/* Notifications */}
-            <div className="rounded-2xl border border-[#E5E7EB] bg-white p-5 shadow-sm">
+            <div className="rounded-xl border border-[#E5E7EB] bg-white p-4 shadow-sm sm:rounded-2xl sm:p-5">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Bell size={18} className="text-[#1A3C6E]" />
-                  <h2 className="text-base font-bold text-[#111827]">Notifications</h2>
+                <div className="flex items-center gap-1.5 sm:gap-2">
+                  <Bell size={16} className="text-[#1A3C6E] sm:size-[18px]" />
+                  <h2 className="text-sm font-bold text-[#111827] sm:text-base">Notifications</h2>
                 </div>
                 {counts.notifications > 3 && (
-                  <span className="rounded-full bg-[#3B82F6]/10 px-2 py-0.5 text-[10px] font-bold text-[#3B82F6]">
+                  <span className="rounded-full bg-[#3B82F6]/10 px-1.5 py-0.5 text-[10px] font-bold text-[#3B82F6] sm:px-2">
                     {counts.notifications}
                   </span>
                 )}
@@ -387,40 +387,40 @@ export default function DashboardPage() {
             </div>
 
             {/* AI Assistant CTA */}
-            <div className="rounded-2xl border border-[#E5E7EB] bg-[#1A3C6E] p-5 text-white shadow-lg shadow-[#1A3C6E]/15">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/15">
-                <Bot size={22} />
+            <div className="rounded-xl border border-[#E5E7EB] bg-[#1A3C6E] p-4 text-white shadow-lg shadow-[#1A3C6E]/15 sm:rounded-2xl sm:p-5">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/15 sm:h-10 sm:w-10 sm:rounded-xl">
+                <Bot size={18} className="sm:size-[22px]" />
               </div>
-              <h2 className="mt-4 text-lg font-bold">Ask BharatLens AI</h2>
-              <p className="mt-2 text-xs leading-6 text-white/70">
+              <h2 className="mt-3 text-sm font-bold sm:mt-4 sm:text-lg">Ask BharatLens AI</h2>
+              <p className="mt-1.5 text-[11px] leading-5 text-white/70 sm:mt-2 sm:text-xs sm:leading-6">
                 Ask about eligibility, documents, deadlines, or benefits for any opportunity.
               </p>
               <Link
                 href="/chatbot"
-                className="mt-4 flex w-full items-center justify-center gap-1 rounded-full bg-white px-4 py-2 text-xs font-semibold text-[#1A3C6E] transition hover:bg-[#F5F3EE] sm:inline-flex sm:w-auto"
+                className="mt-3 flex w-full items-center justify-center gap-1 rounded-full bg-white px-3 py-1.5 text-[11px] font-semibold text-[#1A3C6E] transition hover:bg-[#F5F3EE] sm:mt-4 sm:inline-flex sm:w-auto sm:px-4 sm:py-2 sm:text-xs"
               >
-                Open assistant <ArrowRight size={12} />
+                Open assistant <ArrowRight size={10} className="sm:size-3" />
               </Link>
             </div>
 
             {/* Saved Items */}
-            <div className="rounded-2xl border border-[#E5E7EB] bg-white p-5 shadow-sm">
-              <div className="flex items-center gap-2">
-                <Bookmark size={18} className="text-[#1A3C6E]" />
-                <h2 className="text-base font-bold text-[#111827]">Saved Items</h2>
+            <div className="rounded-xl border border-[#E5E7EB] bg-white p-4 shadow-sm sm:rounded-2xl sm:p-5">
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <Bookmark size={16} className="text-[#1A3C6E] sm:size-[18px]" />
+                <h2 className="text-sm font-bold text-[#111827] sm:text-base">Saved Items</h2>
               </div>
 
               {counts.savedItems > 0 ? (
                 <>
-                  <p className="mt-3 text-sm text-[#111827]/60">
+                  <p className="mt-2 text-xs text-[#111827]/60 sm:mt-3 sm:text-sm">
                     You have <strong className="text-[#1A3C6E]">{counts.savedItems}</strong> saved{" "}
                     {counts.savedItems === 1 ? "item" : "items"} ready for review.
                   </p>
                   <Link
                     href="/saved"
-                    className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-[#3B82F6] transition hover:text-[#1A3C6E]"
+                    className="mt-2 inline-flex items-center gap-1 text-[11px] font-semibold text-[#3B82F6] transition hover:text-[#1A3C6E] sm:mt-3 sm:text-xs"
                   >
-                    View saved items <ArrowRight size={12} />
+                    View saved items <ArrowRight size={10} className="sm:size-3" />
                   </Link>
                 </>
               ) : (
