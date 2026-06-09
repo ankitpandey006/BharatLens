@@ -23,7 +23,6 @@ export default function MainLayout({
     if (authLoading) return;
 
     if (!session) {
-      // Schedule state updates to avoid synchronous setState in effect
       const timer = window.setTimeout(() => {
         setCurrentUser(null);
         setProfileCheckLoading(false);
@@ -43,8 +42,6 @@ export default function MainLayout({
           setCurrentUser(user);
         }
       } catch {
-        // Silently handle — user stays logged out in the UI
-
         if (!canceled) {
           setCurrentUser(null);
         }
@@ -79,10 +76,6 @@ export default function MainLayout({
       router.replace("/dashboard");
       return;
     }
-
-    // For incomplete users: allow dashboard and setup routes to render normally
-    // Dashboard will show a "Complete Profile" card for incomplete users
-    // Setup route will show the profile wizard
   }, [
     authLoading,
     profileCheckLoading,
@@ -93,13 +86,41 @@ export default function MainLayout({
     router,
   ]);
 
-  if (authLoading || profileCheckLoading) {
+  // ── Show a minimal skeleton while auth is being checked ──
+  // This replaces the old full-page "Loading..." spinner.
+  // We show the app shell (children) immediately and let
+  // each page handle its own loading via SWR skeletons.
+  if (authLoading) {
     return (
-      <div className="min-h-[40vh] bg-[#F5F3EE] text-[#111827]">
-        <div className="mx-auto flex min-h-[40vh] max-w-6xl items-center justify-center px-4 py-8">
-          <div className="flex items-center gap-3 rounded-2xl border border-[#E5E7EB] bg-white px-4 py-3 shadow-md">
-            <span className="h-4 w-4 animate-spin rounded-full border-2 border-[#9BB6E5] border-t-[#1A3C6E]" />
-            <p className="text-sm font-medium text-[#1A3C6E]">Loading...</p>
+      <div className="min-h-screen bg-[#F5F3EE] animate-pulse">
+        <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+          <div className="h-8 w-48 rounded-lg bg-[#E5E7EB]/70" />
+          <div className="mt-4 space-y-3">
+            <div className="h-32 rounded-2xl bg-[#E5E7EB]/50" />
+            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="h-24 rounded-2xl bg-[#E5E7EB]/50" />
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Profile check uses a lighter skeleton, not a block screen ──
+  if (profileCheckLoading && session) {
+    return (
+      <div className="min-h-screen bg-[#F5F3EE] animate-pulse">
+        <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+          <div className="h-8 w-48 rounded-lg bg-[#E5E7EB]/70" />
+          <div className="mt-4 space-y-3">
+            <div className="h-32 rounded-2xl bg-[#E5E7EB]/50" />
+            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="h-24 rounded-2xl bg-[#E5E7EB]/50" />
+              ))}
+            </div>
           </div>
         </div>
       </div>

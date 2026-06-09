@@ -1,96 +1,33 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import SchemeCard from "@/components/cards/SchemeCard";
 import ListingSearchFilter from "@/components/filters/ListingSearchFilter";
-import { fetchSavedItems, fetchSchemes, saveItem, unsaveItem } from "@/lib/api/content-api";
+import { saveItem, unsaveItem } from "@/lib/api/content-api";
 import CardSkeleton from "@/components/ui/skeletons/CardSkeleton";
-import type { Scheme } from "@/lib/api/content-api";
-
-interface SchemesPageState {
-  schemes: Scheme[];
-  loading: boolean;
-  error: string | null;
-  page: number;
-  totalPages: number;
-  total: number;
-}
+import { useSchemes, useSavedItemsMap } from "@/hooks/useApi";
 
 export default function SchemesPage() {
-  const [state, setState] = useState<SchemesPageState>({
-    schemes: [],
-    loading: true,
-    error: null,
-    page: 1,
-    totalPages: 1,
-    total: 0,
-  });
-
+  const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("All");
   const [categories, setCategories] = useState<string[]>(["All"]);
-  const [savedMap, setSavedMap] = useState<Record<string, boolean>>({});
   const [savingMap, setSavingMap] = useState<Record<string, boolean>>({});
 
-  useEffect(() => {
-    async function loadSchemes() {
-      try {
-        setState((prev) => ({ ...prev, loading: true, error: null }));
+  const { data: result, error, isLoading } = useSchemes({
+    page,
+    limit: 12,
+    ...(search ? { search } : {}),
+    ...(category && category !== "All" ? { category } : {}),
+  });
 
-        const params: Record<string, unknown> = {
-          page: state.page,
-          limit: 12,
-        };
+  const { savedMap, mutate: mutateSaved } = useSavedItemsMap("scheme");
 
-        if (search) params.search = search;
-        if (category && category !== "All") params.category = category;
-
-        const result = await fetchSchemes(params);
-
-        setState((prev) => ({
-          ...prev,
-          schemes: result.items,
-          totalPages: result.totalPages,
-          total: result.total,
-          loading: false,
-        }));
-
-        // Extract unique categories from results
-        if (result.items.length > 0 && categories.length === 1) {
-          const uniqueCategories = new Set(result.items.map((s) => s.category));
-          setCategories(["All", ...Array.from(uniqueCategories)]);
-        }
-      } catch (error) {
-        console.error("Failed to load schemes:", error);
-        setState((prev) => ({
-          ...prev,
-          loading: false,
-          error: "Failed to load schemes. Please try again.",
-        }));
-      }
-    }
-
-    loadSchemes();
-  }, [search, category, state.page, categories.length]);
-
-  useEffect(() => {
-    const loadSavedState = async () => {
-      try {
-        const savedResult = await fetchSavedItems({ limit: 200 });
-        const map = savedResult.items.reduce<Record<string, boolean>>((acc, item) => {
-          if (item.item_type === "scheme") {
-            acc[item.item_id] = true;
-          }
-          return acc;
-        }, {});
-        setSavedMap(map);
-      } catch (error) {
-        console.error("Unable to load saved scheme state:", error);
-      }
-    };
-
-    loadSavedState();
-  }, []);
+  // Extract unique categories from results
+  if (result?.items && categories.length === 1 && result.items.length > 0) {
+    const uniqueCategories = new Set(result.items.map((s) => s.category));
+    setCategories(["All", ...Array.from(uniqueCategories)]);
+  }
 
   const toggleSaved = async (schemeId: string) => {
     setSavingMap((prev) => ({ ...prev, [schemeId]: true }));
@@ -98,11 +35,10 @@ export default function SchemesPage() {
       const currentlySaved = Boolean(savedMap[schemeId]);
       if (currentlySaved) {
         await unsaveItem(schemeId, "scheme");
-        setSavedMap((prev) => ({ ...prev, [schemeId]: false }));
       } else {
         await saveItem(schemeId, "scheme");
-        setSavedMap((prev) => ({ ...prev, [schemeId]: true }));
       }
+      mutateSaved();
     } catch (error) {
       console.error("Save toggle failed:", error);
     } finally {
@@ -111,16 +47,18 @@ export default function SchemesPage() {
   };
 
   const handleNextPage = () => {
-    if (state.page < state.totalPages) {
-      setState((prev) => ({ ...prev, page: prev.page + 1 }));
+    if (page < (result?.totalPages || 1)) {
+      setPage((p) => p + 1);
     }
   };
 
   const handlePreviousPage = () => {
-    if (state.page > 1) {
-      setState((prev) => ({ ...prev, page: prev.page - 1 }));
+    if (page > 1) {
+      setPage((p) => p - 1);
     }
   };
+
+  const schemes = result?.items ?? [];
 
   return (
     <section className="min-h-screen bg-[#F5F3EE] px-4 py-8 sm:px-6">
@@ -136,27 +74,29 @@ export default function SchemesPage() {
         <div className="mt-6">
           <ListingSearchFilter
             searchValue={search}
-            onSearchChange={setSearch}
+            onSearchChange={(val) => { setSearch(val); setPage(1); }}
             searchPlaceholder="Search schemes by title, details, or eligibility"
             selectedFilter={category}
-            onFilterChange={setCategory}
+            onFilterChange={(val) => { setCategory(val); setPage(1); }}
             filterLabel="Scheme category"
             filterOptions={categories}
-            resultCount={state.total}
+            resultCount={result?.total ?? 0}
           />
         </div>
 
-        {state.loading ? (
+        {isLoading ? (
           <div className="mt-8 grid gap-5 xl:grid-cols-2">
             {Array.from({ length: 4 }).map((_, i) => (
               <CardSkeleton key={i} />
             ))}
           </div>
-        ) : state.error ? (
+        ) : error ? (
           <div className="mt-8 rounded-2xl border border-[#E5E7EB] bg-white p-8 text-center shadow-md">
-            <p className="text-lg font-semibold text-[#1A3C6E]">{state.error}</p>
+            <p className="text-lg font-semibold text-[#1A3C6E]">
+              {error instanceof Error ? error.message : "Failed to load schemes. Please try again."}
+            </p>
           </div>
-        ) : state.schemes.length === 0 ? (
+        ) : schemes.length === 0 ? (
           <div className="mt-8 rounded-2xl border border-[#E5E7EB] bg-white p-8 text-center shadow-md">
             <p className="text-lg font-semibold text-[#1A3C6E]">No schemes found</p>
             <p className="mt-1 text-sm text-[#111827]/70">Try changing your search or category filter.</p>
@@ -164,7 +104,7 @@ export default function SchemesPage() {
         ) : (
           <>
             <div className="mt-8 grid gap-5 xl:grid-cols-2">
-              {state.schemes.map((scheme) => (
+              {schemes.map((scheme) => (
                 <SchemeCard
                   key={scheme.id}
                   scheme={scheme}
@@ -175,21 +115,21 @@ export default function SchemesPage() {
               ))}
             </div>
 
-            {state.totalPages > 1 && (
+            {(result?.totalPages ?? 1) > 1 && (
               <div className="mt-8 flex items-center justify-center gap-3">
                 <button
                   onClick={handlePreviousPage}
-                  disabled={state.page === 1}
+                  disabled={page === 1}
                   className="min-h-[44px] rounded-xl border border-[#E5E7EB] bg-white px-4 text-sm font-semibold text-[#111827] transition hover:bg-[#F5F3EE] disabled:cursor-not-allowed disabled:opacity-50 sm:px-6"
                 >
                   Previous
                 </button>
                 <p className="px-2 text-sm font-medium text-[#111827]/70">
-                  Page {state.page} of {state.totalPages}
+                  Page {page} of {result?.totalPages ?? 1}
                 </p>
                 <button
                   onClick={handleNextPage}
-                  disabled={state.page === state.totalPages}
+                  disabled={page === (result?.totalPages ?? 1)}
                   className="min-h-[44px] rounded-xl bg-[#1A3C6E] px-4 text-sm font-semibold text-white transition hover:bg-[#3B82F6] disabled:cursor-not-allowed disabled:bg-[#9BB6E5] sm:px-6"
                 >
                   Next

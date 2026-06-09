@@ -76,11 +76,30 @@ export default function AdminLayout({
 
   if (authLoading || roleCheckLoading) {
     return (
-      <div className="min-h-[40vh] bg-[#F5F3EE] text-[#111827]">
-        <div className="mx-auto flex min-h-[40vh] max-w-6xl items-center justify-center px-4 py-8">
-          <div className="flex items-center gap-3 rounded-2xl border border-[#E5E7EB] bg-white px-4 py-3 shadow-md">
-            <span className="h-4 w-4 animate-spin rounded-full border-2 border-[#9BB6E5] border-t-[#1A3C6E]" />
-            <p className="text-sm font-medium text-[#1A3C6E]">Loading...</p>
+      <div className="min-h-screen bg-[#F8FAFC] animate-pulse">
+        <div className="hidden lg:flex lg:h-full lg:w-64 lg:flex-col">
+          <div className="flex h-16 items-center justify-center border-b border-[#E5E7EB]/60 bg-white px-6">
+            <div className="h-8 w-24 rounded bg-[#E5E7EB]/70" />
+          </div>
+          <div className="flex-1 space-y-2 bg-white p-4">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="h-10 rounded-xl bg-[#E5E7EB]/50" />
+            ))}
+          </div>
+        </div>
+        <div className="flex flex-1 flex-col lg:ml-64">
+          <div className="flex h-16 items-center border-b border-[#E5E7EB]/60 bg-white px-6">
+            <div className="h-8 w-32 rounded bg-[#E5E7EB]/70" />
+          </div>
+          <div className="flex-1 p-6">
+            <div className="space-y-4">
+              <div className="h-8 w-48 rounded bg-[#E5E7EB]/70" />
+              <div className="grid grid-cols-3 gap-4">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div key={i} className="h-32 rounded-2xl bg-[#E5E7EB]/50" />
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       </div>

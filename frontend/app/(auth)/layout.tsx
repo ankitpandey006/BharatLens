@@ -20,11 +20,19 @@ export default function AuthLayout({
 
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-[#F5F3EE] text-[#111827]">
-        <div className="mx-auto flex min-h-screen max-w-6xl items-center justify-center px-4 py-8">
-          <div className="flex items-center gap-3 rounded-2xl border border-[#E5E7EB] bg-white px-4 py-3 shadow-md">
-            <span className="h-4 w-4 animate-spin rounded-full border-2 border-[#9BB6E5] border-t-[#1A3C6E]" />
-            <p className="text-sm font-medium text-[#1A3C6E]">Loading...</p>
+      <div className="min-h-screen bg-[#F5F3EE] animate-pulse text-[#111827]">
+        <div className="mx-auto grid min-h-screen w-full max-w-6xl items-center gap-10 px-4 py-8 md:grid-cols-[1fr_440px] md:px-8 lg:gap-16">
+          <section className="hidden space-y-4 md:block">
+            <div className="h-4 w-32 rounded bg-[#E5E7EB]/70" />
+            <div className="space-y-3">
+              <div className="h-10 w-3/4 rounded bg-[#E5E7EB]/70" />
+              <div className="h-10 w-1/2 rounded bg-[#E5E7EB]/70" />
+            </div>
+            <div className="h-4 w-full rounded bg-[#E5E7EB]/70" />
+            <div className="h-4 w-2/3 rounded bg-[#E5E7EB]/70" />
+          </section>
+          <div className="flex w-full justify-center">
+            <div className="h-96 w-full max-w-sm rounded-2xl bg-[#E5E7EB]/50" />
           </div>
         </div>
       </div>
