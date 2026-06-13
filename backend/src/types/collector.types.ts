@@ -19,16 +19,32 @@ export interface CollectedDataInsert {
   item_type?: string;
   metadata?: Record<string, unknown>;
   admin_notes?: string;
+  // AI Processing fields
+  ai_output?: Record<string, unknown>;
+  ai_confidence?: number;
+  processed_at?: string;
+  // Verification fields
+  verification_status?: string;
+  verification_score?: number;
+  verification_notes?: string;
+  normalized_title?: string;
+  content_hash?: string;
+  duplicate_reason?: string;
+  duplicate_of_id?: string;
 }
 
 export interface CollectorResult {
   source: string;
+  type?: string;
+  success?: boolean;
   fetched: number;
   inserted: number;
   duplicates: number;
   failed: number;
   skipped?: boolean;
   reason?: string;
+  error?: string;
+  durationMs?: number;
 }
 
 export interface RssCollectorConfig {
@@ -52,12 +68,11 @@ export interface CollectorStatus {
 export interface RunAllCollectorsResult {
   rss: Record<string, CollectorResult>;
   scraping: Record<string, ScraperResult>;
-  pdf: {
-    skipped: boolean;
-    reason: string;
-  };
+  pdf: CollectorResult;
   totalFetched: number;
   totalInserted: number;
   totalDuplicates: number;
   totalFailed: number;
+  totalSkipped: number;
+  totalDurationMs: number;
 }

@@ -36,6 +36,23 @@ export async function findSourceByName(sourceName: string): Promise<SourceRow | 
   return data as SourceRow | null;
 }
 
+/**
+ * Look up a source by its UUID primary key.
+ */
+export async function findSourceById(sourceId: string): Promise<SourceRow | null> {
+  const { data, error } = await supabase
+    .from("sources")
+    .select("*")
+    .eq("id", sourceId)
+    .maybeSingle();
+
+  if (error) {
+    throw new AppError(`Failed to fetch source by id ${sourceId}: ${error.message}`, 500);
+  }
+
+  return data as SourceRow | null;
+}
+
 export interface CollectedDataRow {
   id: string;
   source_id: string;
@@ -51,8 +68,20 @@ export interface CollectedDataRow {
   deadline?: string | null;
   official_url?: string | null;
   item_type?: string | null;
+  content_action?: string | null;
   metadata?: Record<string, unknown> | null;
+  // AI Processing fields
+  ai_output?: Record<string, unknown> | null;
+  ai_confidence?: number | null;
+  processed_at?: string | null;
   verification_status?: string | null;
+  verification_score?: number | null;
+  verification_notes?: string | null;
+  duplicate_reason?: string | null;
+  normalized_title?: string | null;
+  content_hash?: string | null;
+  duplicate_of_id?: string | null;
+  last_verified_at?: string | null;
   rejection_reason?: string | null;
   approved_by?: string | null;
   approved_at?: string | null;
@@ -64,6 +93,18 @@ export interface CollectedDataRow {
   unpublished_at?: string | null;
   is_deleted?: boolean | null;
   admin_notes?: string | null;
+  // Pipeline tracking (from migration 005)
+  pipeline_status?: string | null;
+  pipeline_error?: string | null;
+  cleaned_at?: string | null;
+  classified_at?: string | null;
+  ai_verification_status?: string | null;
+  ai_confidence_score?: number | null;
+  ai_reason?: string | null;
+  ai_verified_at?: string | null;
+  trust_score?: number | null;
+  duplicate_of?: string | null;
+  duplicate_count?: number | null;
   collected_at: string;
   created_at: string;
   updated_at: string;
@@ -114,6 +155,17 @@ export async function listCollectedData(
   verificationStatus?: string,
 ): Promise<{ items: CollectedDataRow[]; total: number }> {
   const offset = (page - 1) * limit;
+
+  // Map frontend status values to DB verification_status where needed
+  const dbStatus = verificationStatus === "duplicate" ? "duplicate"
+    : verificationStatus === "failed" ? "failed"
+    : verificationStatus === "pending" ? "pending"
+    : verificationStatus === "verified_ready" ? "verified_ready"
+    : verificationStatus === "approved" ? "approved"
+    : verificationStatus === "rejected" ? "rejected"
+    : verificationStatus === "published" ? "published"
+    : verificationStatus;
+
   let query = supabase
     .from("collected_data")
     .select("*, sources:source_id(source_name, source_url)", { count: "exact" })
@@ -121,8 +173,8 @@ export async function listCollectedData(
     .neq("is_deleted", true)
     .is("deleted_at", null);
 
-  if (verificationStatus) {
-    query = query.eq("verification_status", verificationStatus);
+  if (dbStatus) {
+    query = query.eq("verification_status", dbStatus);
   }
 
   const { data, error, count } = await query.range(offset, offset + limit - 1);
@@ -152,6 +204,41 @@ export async function findCollectedUrls(rawUrls: string[]): Promise<string[]> {
   }
 
   return (data as Array<{ raw_url: string }> | null)?.map((item) => item.raw_url) ?? [];
+}
+
+/**
+ * Fetch existing content_hashes for duplicate detection.
+ */
+export async function findExistingContentHashes(): Promise<string[]> {
+  const { data, error } = await supabase
+    .from("collected_data")
+    .select("content_hash")
+    .not("content_hash", "is", null);
+
+  if (error) {
+    throw new AppError(`Failed to fetch content hashes: ${error.message}`, 500);
+  }
+
+  return (data as Array<{ content_hash: string }> | null)
+    ?.map((item) => item.content_hash)
+    .filter((h): h is string => Boolean(h)) ?? [];
+}
+
+/**
+ * Fetch existing normalized_titles (with IDs) for duplicate detection.
+ */
+export async function findExistingNormalizedTitles(): Promise<Array<{ id: string; normalized_title: string }>> {
+  const { data, error } = await supabase
+    .from("collected_data")
+    .select("id, normalized_title")
+    .not("normalized_title", "is", null);
+
+  if (error) {
+    throw new AppError(`Failed to fetch normalized titles: ${error.message}`, 500);
+  }
+
+  return (data as Array<{ id: string; normalized_title: string }> | null)
+    ?.filter((item) => Boolean(item.normalized_title)) ?? [];
 }
 
 export async function insertCollectedData(record: CollectedDataInsert): Promise<void> {

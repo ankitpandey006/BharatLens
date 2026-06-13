@@ -51,6 +51,38 @@ export interface Scholarship {
   updated_at?: string;
 }
 
+export interface ContentUpdateBadges {
+  apply: boolean;
+  admit_card: boolean;
+  result: boolean;
+  notification: boolean;
+  answer_key?: boolean;
+}
+
+export interface ContentUpdateLinks {
+  apply?: string;
+  admit_card?: string;
+  result?: string;
+  notification?: string;
+  answer_key?: string;
+}
+
+export interface ContentUpdate {
+  id: string;
+  item_type: string;
+  item_id: string;
+  source_id?: string | null;
+  collected_data_id?: string | null;
+  update_type: string;
+  title: string;
+  description?: string;
+  official_url?: string;
+  status: string;
+  published_at?: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
 export interface Job {
   id: string;
   title: string;
@@ -59,14 +91,20 @@ export interface Job {
   description?: string;
   qualification: string;
   location?: string;
+  state?: string;
   vacancies?: number;
   deadline?: string;
+  sub_category?: string;
   status?: string;
+  verification_status?: string;
   official_url?: string;
   apply_url?: string;
   source_url?: string;
+  source_name?: string;
   created_at?: string;
   updated_at?: string;
+  updates?: ContentUpdateBadges;
+  updateLinks?: ContentUpdateLinks;
 }
 
 export interface Exam {
@@ -78,12 +116,18 @@ export interface Exam {
   eligibility: string;
   examDate?: string;
   applicationDeadline?: string;
+  sub_category?: string;
   status?: string;
+  verification_status?: string;
+  state?: string;
   official_url?: string;
   apply_url?: string;
   source_url?: string;
+  source_name?: string;
   created_at?: string;
   updated_at?: string;
+  updates?: ContentUpdateBadges;
+  updateLinks?: ContentUpdateLinks;
 }
 
 export type ContentType = "scheme" | "scholarship" | "job" | "exam";
@@ -126,10 +170,16 @@ function normalizeExam(raw: unknown): Exam {
       normalizeStringField(data.application_end_date) ??
       normalizeStringField(data.applicationDeadline) ??
       undefined,
+    sub_category:
+      normalizeStringField(data.sub_category) ??
+      undefined,
     status: normalizeStringField(data.status),
+    verification_status: normalizeStringField(data.verification_status),
+    state: normalizeStringField(data.state) ?? undefined,
     official_url: normalizeStringField(data.official_url),
     apply_url: normalizeStringField(data.apply_url),
     source_url: normalizeStringField(data.source_url),
+    source_name: normalizeStringField(data.source_name),
     created_at: normalizeStringField(data.created_at),
     updated_at: normalizeStringField(data.updated_at),
   };
@@ -194,20 +244,23 @@ function normalizeJob(raw: unknown): Job {
     organization: normalizeStringField(data.organization) ?? "",
     description: normalizeStringField(data.description),
     qualification: normalizeStringField(data.qualification) ?? "",
-    location:
-      normalizeStringField(data.location) ??
-      normalizeStringField(data.state) ??
-      undefined,
+    location: normalizeStringField(data.location) ?? undefined,
+    state: normalizeStringField(data.state) ?? undefined,
     vacancies: normalizeNumberField(data.vacancies),
     deadline:
       normalizeStringField(data.deadline) ??
       normalizeStringField(data.application_end_date) ??
       normalizeStringField(data.applicationDeadline) ??
       undefined,
+    sub_category:
+      normalizeStringField(data.sub_category) ??
+      undefined,
     status: normalizeStringField(data.status),
+    verification_status: normalizeStringField(data.verification_status),
     official_url: normalizeStringField(data.official_url),
     apply_url: normalizeStringField(data.apply_url),
     source_url: normalizeStringField(data.source_url),
+    source_name: normalizeStringField(data.source_name),
     created_at: normalizeStringField(data.created_at),
     updated_at: normalizeStringField(data.updated_at),
   };
@@ -344,6 +397,37 @@ export async function fetchScholarshipById(id: string): Promise<Scholarship> {
   return normalizeScholarship(raw);
 }
 
+// Content Updates API
+export async function fetchContentUpdates(params?: {
+  page?: number;
+  limit?: number;
+  itemType?: string;
+  updateType?: string;
+}): Promise<PaginatedResponse<ContentUpdate>> {
+  const queryParams = new URLSearchParams();
+  if (params?.page) queryParams.append("page", String(params.page));
+  if (params?.limit) queryParams.append("limit", String(params.limit));
+  if (params?.itemType) queryParams.append("itemType", params.itemType);
+  if (params?.updateType) queryParams.append("updateType", params.updateType);
+
+  const response = await apiClient<ApiResponse<ContentUpdate[]>>(
+    `/updates?${queryParams.toString()}`,
+    { rawResponse: true },
+  );
+
+  const items = Array.isArray(response.data) ? response.data : [];
+
+  return {
+    items,
+    total: response.pagination?.total || 0,
+    page: response.pagination?.page || 1,
+    limit: response.pagination?.limit || 10,
+    totalPages: response.pagination?.totalPages || 1,
+    hasNextPage: response.pagination?.hasNextPage || false,
+    hasPreviousPage: response.pagination?.hasPreviousPage || false,
+  };
+}
+
 // Jobs API
 export async function fetchJobs(params?: {
   page?: number;
@@ -353,6 +437,7 @@ export async function fetchJobs(params?: {
   category?: string;
   sortBy?: string;
   sortOrder?: "asc" | "desc";
+  tab?: string;
 }): Promise<PaginatedResponse<Job>> {
   const queryParams = new URLSearchParams();
   if (params?.page) queryParams.append("page", String(params.page));
@@ -362,6 +447,7 @@ export async function fetchJobs(params?: {
   if (params?.category) queryParams.append("category", params.category);
   if (params?.sortBy) queryParams.append("sortBy", params.sortBy);
   if (params?.sortOrder) queryParams.append("sortOrder", params.sortOrder);
+  if (params?.tab) queryParams.append("tab", params.tab);
 
   const response = await apiClient<ApiResponse<Job[]>>(
     `/jobs?${queryParams.toString()}`,
@@ -397,6 +483,7 @@ export async function fetchExams(params?: {
   category?: string;
   sortBy?: string;
   sortOrder?: "asc" | "desc";
+  tab?: string;
 }): Promise<PaginatedResponse<Exam>> {
   const queryParams = new URLSearchParams();
   if (params?.page) queryParams.append("page", String(params.page));
@@ -406,6 +493,7 @@ export async function fetchExams(params?: {
   if (params?.category) queryParams.append("category", params.category);
   if (params?.sortBy) queryParams.append("sortBy", params.sortBy);
   if (params?.sortOrder) queryParams.append("sortOrder", params.sortOrder);
+  if (params?.tab) queryParams.append("tab", params.tab);
 
   const response = await apiClient<ApiResponse<Exam[]>>(
     `/exams?${queryParams.toString()}`,
@@ -622,6 +710,16 @@ export async function fetchDashboardStats(): Promise<DashboardStatsResponse> {
     total_saved_items: savedItems.total,
     total_notifications: notifications.total,
   };
+}
+
+// ─── Notification Actions ──────────────────────────────────────
+
+export async function markNotificationRead(notificationId: string): Promise<void> {
+  await apiClient(`/notifications/${notificationId}/read`, { method: "PATCH" });
+}
+
+export async function markAllNotificationsRead(): Promise<{ updatedCount: number }> {
+  return apiClient<{ updatedCount: number }>("/notifications/read-all", { method: "PATCH" });
 }
 
 // Admin Stats API

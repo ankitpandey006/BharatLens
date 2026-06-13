@@ -71,14 +71,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      if (event === "TOKEN_REFRESHED" && !newSession) {
-        try {
-          await supabase.auth.signOut();
-        } catch {
-          // Clearing local state is enough if sign-out fails.
+      // Ignore TOKEN_REFRESHED — it fires silently in the background
+      // every ~hour when Supabase auto-refreshes the session.
+      // The session reference changes but the user hasn't actually moved.
+      // Updating state here causes a cascade of re-renders that flickers the UI.
+      if (event === "TOKEN_REFRESHED") {
+        // If newSession is null, the refresh genuinely failed — sign out.
+        if (!newSession) {
+          try {
+            await supabase.auth.signOut();
+          } catch {
+            // Clearing local state is enough if sign-out fails.
+          }
+          clearAuthToken();
+          setSession(null);
         }
-        clearAuthToken();
-        setSession(null);
         finishLoading();
         return;
       }
@@ -86,6 +93,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (event === "SIGNED_OUT") {
         clearAuthToken();
         setSession(null);
+        finishLoading();
+        return;
+      }
+
+      // For other events (SIGNED_IN, USER_UPDATED, etc.), check if the
+      // user actually changed before updating state to avoid unnecessary renders.
+      const existingUserId = session?.user?.id;
+      const newUserId = newSession?.user?.id;
+      if (newUserId && existingUserId === newUserId) {
+        // Same user — just ensure the token is saved and finish loading.
+        if (newSession?.access_token) {
+          saveAuthToken(newSession.access_token);
+        }
         finishLoading();
         return;
       }

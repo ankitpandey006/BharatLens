@@ -46,5 +46,5 @@ export const collectorConfig: CollectorConfig = {
     apiUrl: "https://api.data.gov.in/resource",
   },
 
-  cronExpression: "0 0 * * *",
+  cronExpression: "0 2 * * *", // Daily at 2:00 AM server time
 };

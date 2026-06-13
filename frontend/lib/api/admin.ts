@@ -1,6 +1,7 @@
 import { apiClient } from "./client";
+import type { ItemType, MainContentType } from "@/types/admin";
 
-export type AdminItemType = "scheme" | "scholarship" | "job" | "exam";
+export type AdminItemType = MainContentType;
 export type VerificationStatus = "pending" | "approved" | "rejected" | "published";
 
 export interface BackendAdminStats {
@@ -109,6 +110,13 @@ export interface BackendAdminContentItem extends BaseBackendItem {
   source_trust?: number;
   ai_notes?: string;
   metadata?: Record<string, unknown>;
+  ai_output?: Record<string, unknown>;
+  processed_at?: string | null;
+  verification_score?: number;
+  verification_notes?: string | null;
+  duplicate_reason?: string | null;
+  normalized_title?: string | null;
+  duplicate_of_id?: string | null;
 }
 
 export async function fetchAdminStats(): Promise<BackendAdminStats> {
@@ -137,10 +145,17 @@ export async function fetchAdminCollectedData(page = 1, limit = 50, status?: str
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function approveCollectedData(id: string, admin_notes?: string): Promise<any> {
+export async function approveCollectedData(id: string, admin_notes?: string, edits?: Record<string, unknown>): Promise<any> {
+  const body: Record<string, unknown> = {};
+  if (admin_notes !== undefined) {
+    body.admin_notes = admin_notes;
+  }
+  if (edits && Object.keys(edits).length > 0) {
+    Object.assign(body, edits);
+  }
   return apiClient(`/admin/collected-data/${id}/approve`, {
     method: "PATCH",
-    body: JSON.stringify({ admin_notes }),
+    body: JSON.stringify(body),
   });
 }
 
@@ -168,6 +183,44 @@ export async function publishCollectedData(id: string, itemType: string, payload
   });
 }
 
+// ── Content Updates (Admin) API ──
+
+export async function publishContentUpdate(data: {
+  item_type: string;
+  item_id: string;
+  update_type: string;
+  title: string;
+  description?: string;
+  official_url?: string;
+  parent_content_type?: string | null;
+  parent_content_id?: string | null;
+  date?: string | null;
+  deadline?: string | null;
+  status?: string;
+  source_id?: string | null;
+  collected_data_id?: string | null;
+}): Promise<any> {
+  return apiClient("/updates", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateContentUpdateStatus(id: string, status: string, admin_notes?: string): Promise<any> {
+  return apiClient(`/updates/${id}/status`, {
+    method: "PATCH",
+    body: JSON.stringify({ status, admin_notes }),
+  });
+}
+
+export async function fetchAdminContentUpdates(page = 1, limit = 20, status?: string): Promise<any> {
+  const query = new URLSearchParams();
+  query.append("page", String(page));
+  query.append("limit", String(limit));
+  if (status) query.append("status", status);
+  return apiClient(`/updates/admin/all?${query.toString()}`);
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function unpublishCollectedData(id: string): Promise<any> {
   return apiClient(`/admin/collected-data/${id}/unpublish`, {
@@ -179,6 +232,89 @@ export async function unpublishCollectedData(id: string): Promise<any> {
 export async function deleteCollectedData(id: string): Promise<any> {
   return apiClient(`/admin/collected-data/${id}/delete`, {
     method: "PATCH",
+  });
+}
+
+// ── AI Processing API ──
+
+export async function processSingleItemWithAi(id: string): Promise<any> {
+  return apiClient(`/ai-processing/process/${id}`, {
+    method: "POST",
+  });
+}
+
+export async function processPendingItemsWithAi(limit = 3): Promise<any> {
+  return apiClient(`/ai-processing/process-pending?limit=${limit}`, {
+    method: "POST",
+  });
+}
+
+// ─── Bulk Actions ──────────────────────────────────────────────────
+
+export interface BulkActionResult {
+  success: boolean;
+  processed: number;
+  successCount: number;
+  failedCount: number;
+  failed: Array<{ id: string; reason: string }>;
+}
+
+export async function bulkApproveCollectedData(ids: string[], reason?: string): Promise<BulkActionResult> {
+  return apiClient("/admin/collected-data/bulk-approve", {
+    method: "POST",
+    body: JSON.stringify({ ids, reason }),
+  });
+}
+
+export async function bulkRejectCollectedData(ids: string[], reason?: string): Promise<BulkActionResult> {
+  return apiClient("/admin/collected-data/bulk-reject", {
+    method: "POST",
+    body: JSON.stringify({ ids, reason }),
+  });
+}
+
+export async function bulkPublishCollectedData(ids: string[]): Promise<BulkActionResult> {
+  return apiClient("/admin/collected-data/bulk-publish", {
+    method: "POST",
+    body: JSON.stringify({ ids }),
+  });
+}
+
+export async function bulkUnpublishCollectedData(ids: string[]): Promise<BulkActionResult> {
+  return apiClient("/admin/collected-data/bulk-unpublish", {
+    method: "POST",
+    body: JSON.stringify({ ids }),
+  });
+}
+
+export async function bulkRestoreCollectedData(ids: string[]): Promise<BulkActionResult> {
+  return apiClient("/admin/collected-data/bulk-restore", {
+    method: "POST",
+    body: JSON.stringify({ ids }),
+  });
+}
+
+export async function bulkDeleteCollectedData(ids: string[]): Promise<BulkActionResult> {
+  return apiClient("/admin/collected-data/bulk-delete", {
+    method: "POST",
+    body: JSON.stringify({ ids }),
+  });
+}
+
+export async function bulkProcessAiCollectedData(ids: string[]): Promise<BulkActionResult> {
+  return apiClient("/admin/collected-data/bulk-process-ai", {
+    method: "POST",
+    body: JSON.stringify({ ids }),
+  });
+}
+
+export async function getAiProcessingLogs(id: string): Promise<any> {
+  return apiClient(`/ai-processing/logs/${id}`);
+}
+
+export async function recheckVerification(id: string): Promise<any> {
+  return apiClient(`/ai-processing/recheck/${id}`, {
+    method: "POST",
   });
 }
 

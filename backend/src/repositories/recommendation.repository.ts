@@ -403,6 +403,47 @@ function mapItemToRecord(
   );
 }
 
+async function fetchItemDataForRecommendation(row: RecommendationRow): Promise<RecommendationResult> {
+  const base: RecommendationResult = {
+    id: row.id,
+    user_id: row.user_id,
+    item_id: row.item_id,
+    item_type: row.item_type,
+    reason: row.reason,
+    score: row.match_score,
+    is_viewed: row.is_viewed,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+  };
+
+  try {
+    const tableName =
+      row.item_type === "scheme" ? "schemes" :
+      row.item_type === "scholarship" ? "scholarships" :
+      row.item_type === "job" ? "jobs" :
+      row.item_type === "exam" ? "exams" : null;
+
+    if (!tableName || !row.item_id) return base;
+
+    const { data, error } = await supabase
+      .from(tableName)
+      .select("*")
+      .eq("id", row.item_id)
+      .maybeSingle();
+
+    if (!error && data) {
+      base.title = (data as any).title || (data as any).exam_name || "";
+      base.description = (data as any).description || "";
+      // Also attach full item_data for frontend consumption
+      (base as any).item_data = data;
+    }
+  } catch (err) {
+    console.warn(`[recommendations] Failed to fetch item_data for ${row.item_type}:${row.item_id}:`, err);
+  }
+
+  return base;
+}
+
 function mapRowToRecommendationResult(row: RecommendationRow): RecommendationResult {
   return {
     id: row.id,
@@ -451,15 +492,18 @@ export async function fetchRecommendations(userId: string, page: number, limit: 
     .from("recommendations")
     .select("*", { count: "exact" })
     .eq("user_id", userId)
-    .order("created_at", { ascending: false })
+    .order("match_score", { ascending: false })
     .range(offset, offset + limit - 1);
 
   if (error) {
     throw new AppError(`Failed to fetch recommendations: ${error.message}`, 500);
   }
 
+  const rows = (data ?? []) as RecommendationRow[];
+  const items = await Promise.all(rows.map(fetchItemDataForRecommendation));
+
   return {
-    items: ((data ?? []) as RecommendationRow[]).map(mapRowToRecommendationResult),
+    items,
     count: count ?? 0,
   };
 }
@@ -476,15 +520,18 @@ export async function fetchRecommendationsByItemType(
     .select("*", { count: "exact" })
     .eq("user_id", userId)
     .eq("item_type", itemType)
-    .order("created_at", { ascending: false })
+    .order("match_score", { ascending: false })
     .range(offset, offset + limit - 1);
 
   if (error) {
     throw new AppError(`Failed to fetch recommendations by type: ${error.message}`, 500);
   }
 
+  const rows = (data ?? []) as RecommendationRow[];
+  const items = await Promise.all(rows.map(fetchItemDataForRecommendation));
+
   return {
-    items: ((data ?? []) as RecommendationRow[]).map(mapRowToRecommendationResult),
+    items,
     count: count ?? 0,
   };
 }

@@ -32,6 +32,24 @@ export const authLimiter = rateLimit({
 });
 
 /**
+ * Chat/AI rate limit: 5 requests per minute per IP
+ * Protects Gemini free-tier quota from abuse.
+ * Since the frontend chatbot makes one request at a time,
+ * 5 req/min is generous for normal use but prevents quota drain.
+ */
+export const chatLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    message: "Too many chat requests. Please wait a moment before trying again.",
+    error: "Please wait before sending more messages. The system protects AI quota by limiting request rate.",
+  },
+});
+
+/**
  * Admin rate limit:
  * - Development: 300 requests/min (accounts for StrictMode double-fetch)
  * - Production: 100 requests/min

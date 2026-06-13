@@ -6,7 +6,8 @@ import { parseListQuery } from "../utils/query-parser";
 
 export const getAllJobs = asyncHandler(async (req: Request, res: Response) => {
   const query = parseListQuery(req);
-  const result = await fetchAllJobs(query);
+  const tab = typeof req.query.tab === "string" ? req.query.tab.trim().toLowerCase() : undefined;
+  const result = await fetchAllJobs({ ...query, tab });
   sendSuccess(res, "Jobs fetched successfully", result.items, result.pagination);
 });
 

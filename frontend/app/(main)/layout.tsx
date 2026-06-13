@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { getCurrentUser, type UserProfile } from "@/lib/api/auth-api";
@@ -15,7 +15,7 @@ export default function MainLayout({
   const { authLoading, session } = useAuth();
 
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
-  const [profileCheckLoading, setProfileCheckLoading] = useState(true);
+  const [initialLoadDone, setInitialLoadDone] = useState(false);
 
   const isProfileSetupRoute = pathname.startsWith("/profile/setup");
 
@@ -23,18 +23,14 @@ export default function MainLayout({
     if (authLoading) return;
 
     if (!session) {
-      const timer = window.setTimeout(() => {
-        setCurrentUser(null);
-        setProfileCheckLoading(false);
-      }, 0);
-      return () => window.clearTimeout(timer);
+      // Once we know there's no session, mark initial load done.
+      if (!initialLoadDone) setInitialLoadDone(true);
+      return;
     }
 
     let canceled = false;
 
     async function loadCurrentUser() {
-      setProfileCheckLoading(true);
-
       try {
         const user = await getCurrentUser();
 
@@ -46,8 +42,8 @@ export default function MainLayout({
           setCurrentUser(null);
         }
       } finally {
-        if (!canceled) {
-          setProfileCheckLoading(false);
+        if (!canceled && !initialLoadDone) {
+          setInitialLoadDone(true);
         }
       }
     }
@@ -62,7 +58,7 @@ export default function MainLayout({
   const profileCompleted = currentUser?.profile_completed === true;
 
   useEffect(() => {
-    if (authLoading || profileCheckLoading) return;
+    if (authLoading || !initialLoadDone) return;
 
     // Redirect unauthenticated users to login
     if (!session) {
@@ -78,7 +74,7 @@ export default function MainLayout({
     }
   }, [
     authLoading,
-    profileCheckLoading,
+    initialLoadDone,
     session,
     pathname,
     profileCompleted,
@@ -86,45 +82,48 @@ export default function MainLayout({
     router,
   ]);
 
-  // ── Show a minimal skeleton while auth is being checked ──
-  // This replaces the old full-page "Loading..." spinner.
-  // We show the app shell (children) immediately and let
-  // each page handle its own loading via SWR skeletons.
-  if (authLoading) {
-    return (
-      <div className="min-h-screen bg-[#F5F3EE] animate-pulse">
-        <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-          <div className="h-8 w-48 rounded-lg bg-[#E5E7EB]/70" />
-          <div className="mt-4 space-y-3">
-            <div className="h-32 rounded-2xl bg-[#E5E7EB]/50" />
-            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-              {Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="h-24 rounded-2xl bg-[#E5E7EB]/50" />
-              ))}
+  // ── Show minimal skeleton only on FIRST render before auth is checked ──
+  // Once initialLoadDone is true, we NEVER show the skeleton again —
+  // even if auth events fire later (e.g. TOKEN_REFRESHED, which the
+  // AuthProvider now silently ignores).
+  if (!initialLoadDone) {
+    // While auth is loading on very first render, show minimal skeleton.
+    if (authLoading) {
+      return (
+        <div className="min-h-screen bg-[#F5F3EE] animate-pulse">
+          <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+            <div className="h-8 w-48 rounded-lg bg-[#E5E7EB]/70" />
+            <div className="mt-4 space-y-3">
+              <div className="h-32 rounded-2xl bg-[#E5E7EB]/50" />
+              <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="h-24 rounded-2xl bg-[#E5E7EB]/50" />
+                ))}
+              </div>
             </div>
           </div>
         </div>
-      </div>
-    );
-  }
+      );
+    }
 
-  // ── Profile check uses a lighter skeleton, not a block screen ──
-  if (profileCheckLoading && session) {
-    return (
-      <div className="min-h-screen bg-[#F5F3EE] animate-pulse">
-        <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-          <div className="h-8 w-48 rounded-lg bg-[#E5E7EB]/70" />
-          <div className="mt-4 space-y-3">
-            <div className="h-32 rounded-2xl bg-[#E5E7EB]/50" />
-            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-              {Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="h-24 rounded-2xl bg-[#E5E7EB]/50" />
-              ))}
+    // Profile check on first load — same skeleton
+    if (session) {
+      return (
+        <div className="min-h-screen bg-[#F5F3EE] animate-pulse">
+          <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+            <div className="h-8 w-48 rounded-lg bg-[#E5E7EB]/70" />
+            <div className="mt-4 space-y-3">
+              <div className="h-32 rounded-2xl bg-[#E5E7EB]/50" />
+              <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="h-24 rounded-2xl bg-[#E5E7EB]/50" />
+                ))}
+              </div>
             </div>
           </div>
         </div>
-      </div>
-    );
+      );
+    }
   }
 
   if (!session) return null;

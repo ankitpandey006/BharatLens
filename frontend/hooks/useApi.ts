@@ -42,17 +42,19 @@ import { fetchAdminStats, fetchAdminCollectedData, type BackendAdminStats, type 
 
 // ─── Default SWR config ──────────────────────────────────────────
 export const DEFAULT_SWR_CONFIG: SWRConfiguration = {
-  dedupingInterval: 5000,
-  revalidateOnFocus: false,
-  revalidateOnReconnect: false,
+  dedupingInterval: 60000,       // dedupe within 60s (was 5s)
+  revalidateOnFocus: false,      // don't refetch on tab focus
+  revalidateOnReconnect: false,  // don't refetch on reconnect
   shouldRetryOnError: false,
   errorRetryCount: 0,
+  keepPreviousData: true,        // always keep old data visible during refetch
 };
 
 // Faster refresh config for search/list pages (user may expect fresh data on filter change)
 export const SEARCH_SWR_CONFIG: SWRConfiguration = {
   ...DEFAULT_SWR_CONFIG,
   dedupingInterval: 2000,
+  keepPreviousData: true,
 };
 
 // ─── Generic fetcher ─────────────────────────────────────────────
@@ -106,6 +108,7 @@ export function useJobs(params?: {
   category?: string;
   sortBy?: string;
   sortOrder?: "asc" | "desc";
+  tab?: string;
 }, swrConfig?: SWRConfiguration) {
   const key = listKey("jobs", params as Record<string, unknown>);
   return useSWR(key, () => fetchJobs(params), {
@@ -132,6 +135,7 @@ export function useExams(params?: {
   category?: string;
   sortBy?: string;
   sortOrder?: "asc" | "desc";
+  tab?: string;
 }, swrConfig?: SWRConfiguration) {
   const key = listKey("exams", params as Record<string, unknown>);
   return useSWR(key, () => fetchExams(params), {
@@ -220,6 +224,7 @@ export function useDashboardSummary(swrConfig?: SWRConfiguration) {
   return useSWR("dashboard/summary", fetchDashboardSummary, {
     ...DEFAULT_SWR_CONFIG,
     ...swrConfig,
+    keepPreviousData: true,
   });
 }
 

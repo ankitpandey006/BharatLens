@@ -1,10 +1,10 @@
 # BharatLens — Complete Codebase Documentation
 
-> **Version:** 1.2.0  
+> **Version:** 1.3.0  
 > **Stack:** Next.js 16 (Frontend) + Express 5 (Backend) + Supabase (Database/Auth)  
 > **Last Updated:** June 2026
 >
-> **Status:** Partially stabilized. Frontend builds clean (TypeScript). Backend type-checks clean. Testing coverage is minimal (1 backend test file). Not production-ready — see [Testing Status](#16-testing-status) and [Known Issues](#17-known-issues--technical-debt).
+> **Status:** Frontend builds clean (TypeScript). Backend type-checks clean. AI services upgraded with Gemini integration. Chatbot backend implemented. Testing coverage remains minimal (1 backend test file). See [Testing Status](#17-testing-status) and [Known Issues](#18-known-issues--technical-debt).
 
 ---
 
@@ -21,8 +21,8 @@
 9. [Admin Workflow](#9-admin-workflow)
 10. [Recommendation Engine](#10-recommendation-engine)
 11. [Data Collection Workflow](#11-data-collection-workflow)
-12. [AI Services](#12-ai-services)
-13. [Loading Strategy](#13-loading-strategy)
+12. [AI Services & Gemini Integration](#12-ai-services--gemini-integration)
+13. [Loading & Caching Strategy](#13-loading--caching-strategy)
 14. [Deployment Guide](#14-deployment-guide)
 15. [Security Analysis](#15-security-analysis)
 16. [Performance Analysis](#16-performance-analysis)
@@ -35,13 +35,15 @@
 
 ## 1. Project Overview
 
-BharatLens is an AI-powered discovery platform that provides verified information about Indian government schemes, scholarships, jobs, and exams. It aggregates data from multiple official government sources (RSS feeds, scraping, PDFs), classifies and cleans the data, and surfaces personalized recommendations through a rule-based eligibility matching engine.
+BharatLens is an AI-powered discovery platform that provides verified information about Indian government schemes, scholarships, jobs, and exams. It aggregates data from multiple official government sources (RSS feeds, scraping, PDFs), classifies and cleans the data using a hybrid AI pipeline (Gemini + rule-based fallback), and surfaces personalized recommendations through a rule-based eligibility matching engine.
 
 ### Core Value Proposition
 
 - **Centralized Discovery:** Aggregates schemes, scholarships, jobs, and exams from PIB, Employment News, MyGov, India.gov, SSC, UPSC, NTA, AICTE, UGC, RRB, and Data.gov
+- **AI-Powered Classification:** Uses Google Gemini API for intelligent content classification and data extraction, with automatic fallback to rule-based methods
 - **Rule-Based Personalization:** Profile-based recommendation engine that matches users to relevant opportunities using static scoring rules
-- **Verified Content Pipeline:** Admin moderation workflow with approval, rejection, and publishing stages
+- **Verified Content Pipeline:** Admin moderation workflow with AI processing → verification → approval → publishing stages
+- **AI Chatbot:** Gemini-powered conversational assistant for user queries
 - **Multi-platform Access:** Responsive web interface with both user-facing and admin-facing panels
 
 ### Key Technologies
@@ -58,6 +60,7 @@ BharatLens is an AI-powered discovery platform that provides verified informatio
 | **Database** | Supabase (PostgreSQL) | — |
 | **Auth** | Supabase Auth | — |
 | **Validation** | Zod | 4.4.3 |
+| **AI SDK** | @google/genai | 2.8.0 |
 | **RSS Parsing** | rss-parser | 3.13.0 |
 | **Web Scraping** | Cheerio + Axios | 1.2.0 / 1.17.0 |
 | **PDF Parsing** | pdf-parse | 2.4.5 |
@@ -77,19 +80,16 @@ graph TB
         CP[Content Pages<br/>Schemes, Scholarships, Jobs, Exams]
         RP[Recommendations Page]
         CH[Chatbot Page]
-        ADP[Admin Pages<br/>Dashboard, Content Mgmt, Users]
-        AC[Admin Components<br/>Sidebar, Header, Stat Cards, Tables]
-        CC[Content Components<br/>Cards, Detail Pages, Lists]
-        UC[UI Components<br/>Skeletons, Spinners, Modals]
+        ADP[Admin Pages<br/>Dashboard, Content Mgmt, Users, Sources]
     end
 
     subgraph "Backend (Express 5)"
-        MW[Middleware<br/>Auth, Role, Validation, Error]
-        R[Routes<br/>17 Route Modules]
+        MW[Middleware<br/>Auth, Role, Validation, Error, Rate Limit]
+        R[Routes<br/>19 Route Modules]
         C[Controllers]
         S[Services<br/>Business Logic Layer]
         REP[Repositories<br/>Data Access Layer]
-        AI[AI Services<br/>Classifier, Cleaner, Dedup - Rule Based]
+        AI[AI Services<br/>Gemini + Rule-Based Fallback]
         COL[Collectors<br/>RSS, Scraper, PDF, API]
         SCH[Scheduler<br/>Daily Collector Cron]
     end
@@ -101,12 +101,12 @@ graph TB
         PDF[PDF Documents]
     end
 
+    CH -->|POST /api/ai/chat| R
     FP --> MW
     AP --> MW
     MP --> MW
     CP --> MW
     RP --> MW
-    CH --> MW
     ADP --> MW
     MW --> R
     R --> C
@@ -124,14 +124,15 @@ graph TB
 ### Architecture Principles
 
 1. **Layered Backend:** Routes → Controllers → Services → Repositories → Supabase
-2. **Rate Limited:** Three tiers — 100 req/min general API, 10 req/min auth, 30-300 req/min admin (dev/production)
+2. **Rate Limited:** Four tiers — 100 req/min general API, 10 req/min auth, 5 req/min chatbot, 30-300 req/min admin (dev/production)
 3. **Security Headers:** Strict CSP, frame-src denied, CORS restricted, request size limited to 1MB
 4. **Production-Safe Errors:** 500 errors return generic messages in production; full details logged server-side
 5. **Client-side Rendering:** All authenticated pages use `"use client"` for interactivity
 6. **Token-based Auth:** JWT tokens managed through Supabase Auth with bearer tokens
 7. **Admin Isolation:** Separate layout and sidebar with role-based access
-8. **Data Pipeline:** External sources → Collectors → `collected_data` table → Verification → Public tables
-9. **Client-Side Caching:** SWR with stale-while-revalidate for all GET API requests; no duplicate loading states
+8. **Data Pipeline:** External sources → Collectors → `collected_data` table → AI Processing → Verification → Public tables
+9. **Client-Side Caching:** SWR with stale-while-revalidate for all GET API requests; `keepPreviousData: true` globally; `revalidateOnFocus: false`
+10. **Tab-Switch Resilience:** AuthProvider ignores `TOKEN_REFRESHED` events; main layout skeleton only on very first render; admin pages use `hasLoadedOnce` ref
 
 ---
 
@@ -144,13 +145,17 @@ BharatLens/
 │   │   ├── layout.tsx                # Root layout w/ AuthProvider & AppShell
 │   │   ├── page.tsx                  # Landing page
 │   │   ├── globals.css               # Tailwind + custom CSS
+│   │   ├── about/page.tsx            # About page
 │   │   ├── (main)/layout.tsx         # Authenticated layout w/ skeleton loading
-│   │   ├── (auth)/layout.tsx         # Auth layout (login/register)
 │   │   ├── (main)/dashboard/page.tsx # User dashboard
+│   │   ├── (main)/dashboard/profile/  # Dashboard profile sub-page
 │   │   ├── (main)/saved/page.tsx     # Saved items
 │   │   ├── (main)/profile/page.tsx   # User profile
+│   │   ├── (main)/profile/setup/     # Profile setup wizard
+│   │   ├── (main)/settings/page.tsx  # Settings (Coming Soon placeholder)
 │   │   ├── (main)/notifications/page.tsx
 │   │   ├── (main)/recommendations/page.tsx
+│   │   ├── (main)/chatbot/page.tsx   # AI chatbot/assistant page
 │   │   ├── (main)/schemes/page.tsx   # Schemes listing
 │   │   ├── (main)/schemes/[id]/page.tsx # Scheme detail
 │   │   ├── (main)/scholarships/page.tsx
@@ -159,31 +164,50 @@ BharatLens/
 │   │   ├── (main)/jobs/[id]/page.tsx
 │   │   ├── (main)/exams/page.tsx
 │   │   ├── (main)/exams/[id]/page.tsx
-│   │   ├── (main)/chatbot/page.tsx   # Chatbot/AI assistant page
-│   │   ├── admin/layout.tsx          # Admin layout w/ skeleton loading
+│   │   ├── admin/layout.tsx          # Admin layout w/ sidebar + role check
 │   │   ├── admin/page.tsx            # Admin dashboard
+│   │   ├── admin/verification/        # Content verification (pending items)
+│   │   ├── admin/approved/            # Approved items
+│   │   ├── admin/published/           # Published items
+│   │   ├── admin/rejected/            # Rejected items
+│   │   ├── admin/sources/             # Data source management
+│   │   ├── admin/users/               # User management
+│   │   ├── admin/updates/             # Content updates management
 │   │   └── auth/callback/route.ts    # OAuth callback handler
 │   ├── components/                   # React Components
 │   │   ├── auth/                     # AuthProvider, OriginGuard
-│   │   ├── layout/                   # AppShell, SiteHeader, SiteFooter
-│   │   ├── admin/                    # AdminSidebar, AdminHeader, AdminStatCard, etc.
-│   │   ├── cards/                    # SchemeCard, JobCard, ExamCard, etc.
-│   │   ├── details/                  # DetailLoading, DetailHero, EligibilityList, etc.
-│   │   ├── forms/                    # LoginForm, RegisterForm, etc.
+│   │   ├── layout/                   # AppShell, SiteHeader, SiteFooter, MobileNav
+│   │   ├── admin/                    # AdminSidebar, AdminHeader, AdminStatCard,
+│   │   │                             # AdminItemTable, AdminTable, VerificationTable,
+│   │   │                             # ModerationTable, BulkActionBar, SlidePanel,
+│   │   │                             # StatusBadge, SourceBadge, ConfidenceBadge,
+│   │   │                             # FilterBar, StatCard, VerificationDetailPanel
+│   │   ├── cards/                    # BharatLensCard, SavedItemCard, NotificationCard
+│   │   ├── details/                  # BharatLensDetail, DetailHero, DetailSidebar,
+│   │   │                             # DetailLoading, DetailError, EligibilityList,
+│   │   │                             # InfoSection, TimelineSection, DocumentsList,
+│   │   │                             # RelatedCards
+│   │   ├── forms/                    # LoginForm, RegisterForm, ForgotPasswordForm,
+│   │   │                             # ResetPasswordForm
 │   │   ├── filters/                  # ListingSearchFilter
-│   │   └── ui/skeletons/            # Loading skeletons
+│   │   └── ui/                      # skeleton, Spinner, button, card, badge, separator
+│   │       └── skeletons/           # DashboardSkeleton, CardSkeleton, ListSkeleton, PageSkeleton
 │   ├── hooks/                        # Custom hooks
 │   │   ├── useAuth.ts                # Auth context wrapper
 │   │   ├── useApi.ts                 # SWR-based API hooks (useSchemes, useJobs, etc.)
-│   │   ├── useProfile.ts             # Dead/unused wrapper
-│   │   └── useSavedItems.ts          # Dead/unused wrapper
+│   │   ├── useProfile.ts             # Deleted — was unused
+│   │   └── useSavedItems.ts          # Deleted — was unused
 │   ├── lib/                          # API & utilities
-│   │   ├── api/                      # API clients (client, auth-api, content-api, admin, dashboard-api, admin-utils)
-│   │   ├── auth/                     # Auth utilities (urls, storage, safe-origin, debug)
+│   │   ├── api/                      # API clients (client, auth-api, content-api,
+│   │   │                             # admin, dashboard-api, admin-utils)
 │   │   ├── supabase/                 # Supabase client (client.ts, server.ts)
 │   │   └── types/                    # Shared type definitions
 │   ├── types/                        # TypeScript type definitions
-│   ├── utils/                        # Utility functions (cn, formatDate, filterItems)
+│   ├── utils/                        # Utility functions
+│   │   ├── cn.ts                     # Tailwind class merging
+│   │   ├── formatDate.ts             # Date formatting
+│   │   ├── filterItems.ts            # Client-side item filtering
+│   │   └── getCategoryCounts.ts      # Tab counter utility w/ normalizeSubType
 │   ├── proxy.ts                      # Next.js middleware for auth protection
 │   ├── next.config.ts                # Next.js config
 │   └── package.json                  # Frontend dependencies
@@ -191,38 +215,47 @@ BharatLens/
 ├── backend/                          # Express 5 Backend
 │   ├── src/
 │   │   ├── server.ts                 # Server entry point
-│   │   ├── app.ts                    # Express app configuration
+│   │   ├── app.ts                    # Express app configuration (19 route modules)
 │   │   ├── config/                   # Configuration files
-│   │   │   ├── env.ts                # Zod-validated environment variables
+│   │   │   ├── env.ts                # Zod-validated environment variables (includes Gemini)
 │   │   │   ├── supabase.ts           # Supabase client setup
-│   │   │   └── collector.config.ts   # Collector source definitions
-│   │   ├── routes/                   # Express routers (17 modules)
+│   │   │   └── collector.config.ts   # Collector source definitions (RSS, scraper, PDF)
+│   │   ├── routes/                   # Express routers (19 modules)
 │   │   ├── controllers/             # Request handlers
-│   │   ├── services/                 # Business logic (14 modules)
+│   │   ├── services/                 # Business logic
 │   │   ├── repositories/            # Data access layer
-│   │   ├── middlewares/              # Express middleware (6 modules)
+│   │   ├── middlewares/              # Express middleware (7 modules)
 │   │   ├── validators/              # Zod validation schemas
 │   │   ├── collectors/              # Data collectors
-│   │   │   ├── rss/                  # RSS feed collectors
-│   │   │   ├── scraping/             # Website scrapers
+│   │   │   ├── rss/                  # RSS feed collectors (PIB, Employment, MyGov, India.gov)
+│   │   │   ├── scraping/             # Website scrapers (SSC, UPSC, NTA, AICTE, UGC, RRB)
 │   │   │   ├── pdf/                  # PDF extractors
-│   │   │   └── apis/                 # External API collectors (Data.gov placeholder)
-│   │   ├── ai/                       # AI services (rule-based: classifier, cleaner, dedup)
-│   │   ├── jobs/                     # Scheduled jobs (daily collector)
+│   │   │   └── apis/                 # External API collectors (Data.gov placeholder, MyGov)
+│   │   ├── ai/                       # AI services
+│   │   │   ├── gemini.service.ts     # Gemini AI classification & extraction
+│   │   │   ├── classifier.service.ts # Rule-based text classifier (fallback)
+│   │   │   ├── data-cleaner.service.ts # Text cleaning, URL validation, date parsing
+│   │   │   └── duplicate-detector.service.ts # URL, hash, title, and fuzzy dedup
+│   │   ├── jobs/                     # Scheduled jobs (daily collector at 2 AM)
 │   │   ├── types/                    # TypeScript types
-│   │   ├── utils/                    # Utilities
-│   │   ├── constants/               # Status constants
+│   │   ├── utils/                    # Utilities (pagination, async-handler, app-error, etc.)
+│   │   ├── constants/               # Status constants (VERIFICATION_STATUSES, CONTENT_ACTIONS)
 │   │   └── docs/                     # OpenAPI spec
-│   └── tests/                        # Backend tests
-│       └── controllers/              # Controller tests (1 test file)
+│   ├── migrations/                   # SQL migration scripts (12 files: 000-011)
+│   ├── scripts/                      # Utility scripts (run-migration.ts)
+│   ├── tests/                        # Backend tests
+│   │   └── controllers/              # Controller tests (1 test file)
+│   ├── PAGINATION_ARCHITECTURE.md    # Pagination design doc
+│   ├── jest.config.cjs
+│   └── package.json
 │
-├── .gitignore
-├── .vscode/                          # VS Code settings
+├── DOCUMENTATION.md                  # This file
 ├── AGENTS.md                         # AI agent configuration
 ├── CLAUDE.md                         # AI assistant rules
-├── DOCUMENTATION.md                  # This file
-├── DOCUMENTATION.md.bak              # Old version backup
-└── README.md
+├── PROJECT_WORKFLOW.md               # Development workflow guide
+├── PIPELINE_DOCUMENTATION.md          # Data pipeline documentation
+├── README.md
+└── .gitignore
 ```
 
 ---
@@ -237,17 +270,15 @@ The application uses Next.js App Router with the following route groups:
 |---|---|---|---|---|
 | **Public** | `/` | Landing page | No | AppShell |
 | | `/about` | About page | No | AppShell |
-| **Auth** | `/login` | Login form | No (redirects if authenticated) | AuthLayout |
-| | `/register` | Registration form | No (redirects if authenticated) | AuthLayout |
-| | `/forgot-password` | Password reset request | No | AuthLayout |
-| | `/reset-password` | Password reset action | No | AuthLayout |
 | **Main** | `/dashboard` | User dashboard | Yes + profile check | MainLayout |
-| | `/profile` | View profile | Yes | MainLayout |
-| | `/profile/setup` | Profile setup wizard | Yes | MainLayout |
+| | `/dashboard/profile` | Dashboard profile sub-page | Yes | MainLayout |
+| | `/profile` | View/edit profile | Yes | MainLayout |
+| | `/profile/setup` | Profile setup wizard (for new users) | Yes | MainLayout |
 | | `/saved` | Saved items | Yes | MainLayout |
 | | `/notifications` | Notifications list | Yes | MainLayout |
 | | `/recommendations` | AI recommendations | Yes | MainLayout |
 | | `/chatbot` | AI chatbot/assistant | Yes | MainLayout |
+| | `/settings` | Account settings (Coming Soon) | Yes | MainLayout |
 | | `/schemes` | Schemes listing | Yes | MainLayout |
 | | `/schemes/[id]` | Scheme detail | Yes | MainLayout |
 | | `/scholarships` | Scholarship listing | Yes | MainLayout |
@@ -257,15 +288,16 @@ The application uses Next.js App Router with the following route groups:
 | | `/exams` | Exams listing | Yes | MainLayout |
 | | `/exams/[id]` | Exam detail | Yes | MainLayout |
 | **Admin** | `/admin` | Admin dashboard | Yes + admin/moderator role | AdminLayout |
-| | `/admin/analytics` | Analytics | Yes + admin/moderator role | AdminLayout |
-| | `/admin/verification` | Data verification | Yes + admin/moderator role | AdminLayout |
-| | `/admin/published` | Published items | Yes + admin/moderator role | AdminLayout |
+| | `/admin/verification` | Data verification (pending items) | Yes + admin/moderator role | AdminLayout |
 | | `/admin/approved` | Approved items | Yes + admin/moderator role | AdminLayout |
+| | `/admin/published` | Published items | Yes + admin/moderator role | AdminLayout |
 | | `/admin/rejected` | Rejected items | Yes + admin/moderator role | AdminLayout |
-| | `/admin/sources` | Data sources | Yes + admin/moderator role | AdminLayout |
+| | `/admin/sources` | Data sources management | Yes + admin/moderator role | AdminLayout |
 | | `/admin/users` | User management | Yes + admin/moderator role | AdminLayout |
 | | `/admin/updates` | Content updates | Yes + admin/moderator role | AdminLayout |
 | **Callback** | `/auth/callback` | OAuth callback | Public | None |
+
+> **Note:** Auth pages (login, register, forgot-password, reset-password) are likely SPA-rendered via form components within the AppShell layout, not separate route files. The `(auth)` route group directory was removed.
 
 ### 4.2 Layout Architecture
 
@@ -274,66 +306,78 @@ RootLayout (app/layout.tsx)
 ├── AuthProvider
 │   ├── OriginGuard
 │   └── AppShell (components/layout/AppShell.tsx)
-│       ├── SiteHeader (hidden on /admin, /login, /register, etc.)
+│       ├── SiteHeader (hidden on /admin)
 │       ├── Main Content (flex-1)
-│       │   ├── (main)/layout.tsx     ← Auth check + profile check (skeleton while loading)
-│       │   │   └── Page content (SWR skeletons for each page)
-│       │   ├── (auth)/layout.tsx     ← Auth redirect check (skeleton while loading)
-│       │   │   └── Auth forms
-│       │   └── admin/layout.tsx      ← Role check, sidebar (skeleton while loading)
+│       │   ├── (main)/layout.tsx     ← Auth check + profile check
+│       │   │   └── Page content (SWR-served with skeletons)
+│       │   ├── (/)
+│       │   │   └── Landing / About pages
+│       │   └── admin/layout.tsx      ← Role check + sidebar + header
 │       │       └── Admin content
-│       └── SiteFooter (hidden on same pages as header)
+│       └── SiteFooter (hidden on /admin)
 ```
 
 ### 4.3 Key Components
 
 #### Layout Components
-- **`AppShell.tsx`** (`frontend/components/layout/AppShell.tsx`): Conditionally renders header/footer based on route (hidden for admin, auth pages)
-- **`SiteHeader.tsx`** (`frontend/components/layout/SiteHeader.tsx`): Sticky navigation with scroll effect, explore dropdown, profile dropdown with logout, mobile menu
-- **`SiteFooter.tsx`** (`frontend/components/layout/SiteFooter.tsx`): Footer with brand, explore links, resource links
+- **`AppShell.tsx`** — Conditionally renders header/footer based on route (hidden for admin)
+- **`SiteHeader.tsx`** — Sticky navigation with scroll effect, explore dropdown, profile dropdown, mobile menu
+- **`SiteFooter.tsx`** — Footer with brand, explore links, resource links
+- **`MobileNav.tsx`** — Mobile navigation drawer
 
 #### Auth Components
-- **`AuthProvider.tsx`** (`frontend/components/auth/AuthProvider.tsx`): React context for Supabase session management, handles token save/clear, sign out, session refresh
-- **`OriginGuard.tsx`** (`frontend/components/auth/OriginGuard.tsx`): Redirects users from `0.0.0.0` to `localhost` to fix OAuth PKCE state issues
+- **`AuthProvider.tsx`** — React context for Supabase session management. Handles token save/clear, sign out, session refresh. **Ignores `TOKEN_REFRESHED` events** to prevent unnecessary re-renders on background token refresh.
+- **`OriginGuard.tsx`** — Redirects users from `0.0.0.0` to `localhost` to fix OAuth PKCE state issues
 
 #### Admin Components
-- **`AdminSidebar.tsx`** (`frontend/components/admin/AdminSidebar.tsx`): Admin navigation sidebar
-- **`AdminHeader.tsx`** (`frontend/components/admin/AdminHeader.tsx`): Admin top header with mobile menu toggle
-- **`AdminStatCard.tsx`** (`frontend/components/admin/AdminStatCard.tsx`): Statistics display card
-- **`AdminItemTable.tsx`** (`frontend/components/admin/AdminItemTable.tsx`): Table for admin item listings
-- **`VerificationDetailPanel.tsx`** (`frontend/components/admin/VerificationDetailPanel.tsx`): Detail panel for approve/reject/publish workflow
-- **`VerificationTable.tsx`** (`frontend/components/admin/VerificationTable.tsx`): Verification items table
+- **`AdminSidebar.tsx`** — Admin navigation sidebar with route links
+- **`AdminHeader.tsx`** — Admin top header with mobile menu toggle
+- **`AdminStatCard.tsx`** — Statistics display card
+- **`AdminItemTable.tsx`** — Table for admin item listings with actions
+- **`AdminTable.tsx`** — Generic admin table component
+- **`VerificationTable.tsx`** — Verification items table for pending items
+- **`ModerationTable.tsx`** — Moderation table with approve/reject actions
+- **`BulkActionBar.tsx`** — Bulk approve/reject/publish/delete bar with per-action spinners
+- **`VerificationDetailPanel.tsx`** — Detail panel for approve/reject/publish workflow
+- **`SlidePanel.tsx`** — Slide-out detail panel for item inspection
+- **`StatusBadge.tsx`** — Colored badge for verification/processing status
+- **`SourceBadge.tsx`** — Data source badge
+- **`ConfidenceBadge.tsx`** — AI confidence score badge
+- **`FilterBar.tsx`** — Filter bar for admin listings
+- **`StatCard.tsx`** — Generic stat card component
 
 #### Card Components
-- **`SchemeCard.tsx`**, **`ScholarshipCard.tsx`**, **`JobCard.tsx`**, **`ExamCard.tsx`**: Content listing cards with save/bookmark functionality
-- **`SavedItemCard.tsx`** (`frontend/components/cards/SavedItemCard.tsx`): Card for saved items with remove capability
-- **`NotificationCard.tsx`** (`frontend/components/cards/NotificationCard.tsx`): Notification display card
+- **`BharatLensCard.tsx`** — Unified card component used for all content types (schemes, scholarships, jobs, exams). Supports CTA with direct external URL (opens in new tab) or detail page fallback. Save button with stopPropagation.
+- **`SavedItemCard.tsx`** — Card for saved items with remove capability
+- **`NotificationCard.tsx`** — Notification display card
 
 #### Detail Components
-- **`DetailPage.tsx`** (`frontend/components/details/DetailPage.tsx`): Generic detail page wrapper (unused for main content types)
-- **`DetailHero.tsx`**: Hero section for detail pages
-- **`DetailLoading.tsx`**: Skeleton loading state for detail pages
-- **`EligibilityList.tsx`**: Eligibility criteria display
-- **`InfoSection.tsx`**: Information sections
-- **`DocumentsList.tsx`**: Required documents display
-- **`TimelineSection.tsx`**: Timeline view for dates
-- **`RelatedCards.tsx`**: Related opportunities
-- **`DetailSidebar.tsx`**: Sidebar with actions (save, share, apply)
-- **`DetailError.tsx`**: Error state for detail pages
+- **`BharatLensDetail.tsx`** — Unified detail page for all content types (replaces individual detail components)
+- **`DetailHero.tsx`** — Hero section for detail pages
+- **`DetailSidebar.tsx`** — Sidebar with actions (save, share, apply)
+- **`DetailLoading.tsx`** — Skeleton loading state for detail pages
+- **`DetailError.tsx`** — Error state for detail pages
+- **`DetailPage.tsx`** — Legacy generic detail page wrapper (mostly unused)
+- **`EligibilityList.tsx`** — Eligibility criteria display
+- **`InfoSection.tsx`** — Information sections
+- **`DocumentsList.tsx`** — Required documents display
+- **`TimelineSection.tsx`** — Timeline view for dates
+- **`RelatedCards.tsx`** — Related opportunities
 
 #### Form Components
-- **`LoginForm.tsx`**: Email/password and Google OAuth login
-- **`RegisterForm.tsx`**: User registration form
-- **`ForgotPasswordForm.tsx`**: Password reset request
-- **`ResetPasswordForm.tsx`**: Password reset with new password
+- **`LoginForm.tsx`** — Email/password and Google OAuth login
+- **`RegisterForm.tsx`** — User registration form
+- **`ForgotPasswordForm.tsx`** — Password reset request
+- **`ResetPasswordForm.tsx`** — Password reset with new password
 
 #### Filter Components
-- **`ListingSearchFilter.tsx`**: Search input + category filter + result count
+- **`ListingSearchFilter.tsx`** — Search input + category filter + result count
 
 #### UI Components
-- **Skeletons**: `DashboardSkeleton.tsx`, `CardSkeleton.tsx`, `ListSkeleton.tsx`, `PageSkeleton.tsx`
-- **`Spinner.tsx`**: Animation-only spinner (used for actions: save, delete, form submit)
-- **`Skeleton.tsx`**: Base skeleton component
+- **Skeletons:** `DashboardSkeleton`, `CardSkeleton`, `ListSkeleton`, `PageSkeleton`
+- **`Spinner.tsx`** — Animation-only spinner (used for actions: save, delete, form submit)
+- **`Skeleton.tsx`** — Base skeleton component
+- **`button.tsx`**, **`card.tsx`**, **`badge.tsx`**, **`separator.tsx`** — Basic UI primitives
 
 ### 4.4 Hooks
 
@@ -347,13 +391,13 @@ RootLayout (app/layout.tsx)
 | `useSavedItems` | `frontend/hooks/useApi.ts` | **Active** | SWR-based saved items with caching |
 | `useNotifications` | `frontend/hooks/useApi.ts` | **Active** | SWR-based notifications with caching |
 | `useRecommendations` | `frontend/hooks/useApi.ts` | **Active** | SWR-based recommendations with caching |
-| `useDashboardSummary` | `frontend/hooks/useApi.ts` | **Active** | SWR-based dashboard data with caching |
+| `useDashboardSummary` | `frontend/hooks/useApi.ts` | **Active** | SWR-based dashboard data with `keepPreviousData` |
 | `useCurrentUser` | `frontend/hooks/useApi.ts` | **Active** | SWR-based current user profile with caching |
 | `useAdminStats` | `frontend/hooks/useApi.ts` | **Active** | SWR-based admin stats with caching |
 | `useAdminCollectedData` | `frontend/hooks/useApi.ts` | **Active** | SWR-based admin collected data with caching |
 | `useSavedItemsMap` | `frontend/hooks/useApi.ts` | **Active** | SWR-based saved items map (item_id → boolean) |
-| `useProfile` | `frontend/hooks/useProfile.ts` | **Dead/unused** | Generic useState wrapper, not used anywhere |
-| `useSavedItems` (legacy) | `frontend/hooks/useSavedItems.ts` | **Dead/unused** | Generic useState wrapper, not used anywhere |
+| `useProfile` | ❌ removed | Was unused Generic useState wrapper, never imported |
+| `useSavedItems` (legacy) | ❌ Removed | Dead/unused hook — use `useSavedItems` from `useApi.ts` instead |
 
 ### 4.5 API Client Architecture
 
@@ -365,7 +409,6 @@ The frontend uses a centralized API client (`frontend/lib/api/client.ts`) that:
 4. Supports "optional" mode (returns `undefined` instead of throwing on failure)
 5. Supports "rawResponse" mode for accessing full response object including pagination
 6. Has **request deduplication**: Concurrent identical GET calls share a single in-flight promise
-7. **Note:** This dedup is separate from SWR's deduping — both coexist
 
 ### 4.6 Styling
 
@@ -374,7 +417,21 @@ The frontend uses a centralized API client (`frontend/lib/api/client.ts`) that:
 - Consistent design language: rounded cards, shadows, hover transitions, backdrop blur
 - Responsive design with mobile-first breakpoints
 - Custom scrollbar styling
-- Animations via CSS transitions and keyframes (Framer Motion dependency present but barely used)
+- Animations via CSS transitions and keyframes
+
+### 4.7 Tab Counter & Content Action System
+
+Tab counters on listing pages (Jobs, Exams) use the `getCategoryCounts` utility:
+
+- **`frontend/utils/getCategoryCounts.ts`** — Computes tab counts from full unfiltered items array. Never recalculates from filtered data.
+- **`normalizeSubType()`** — Normalizes database sub_category values to canonical form:
+  - `apply` / `Apply` / `apply_now` / `Apply Now` → `apply_now`
+  - `admit_card` / `Admit Card` → `admit_card`
+  - `result` / `Result` → `result`
+  - `answer_key` / `Answer Key` → `answer_key`
+  - `notification` / `Notify` / `Notifications` → `notification`
+- Tab filtering is done **client-side** (tab param no longer sent to API). Tab counts are always computed from the full `result?.items` array.
+- CTA buttons on cards detect external URLs first (opens in new tab). Falls back to internal detail page if no URL.
 
 ---
 
@@ -389,8 +446,8 @@ The frontend uses a centralized API client (`frontend/lib/api/client.ts`) that:
 - CORS (FRONTEND_URL + localhost:3001)
 - JSON body parsing (1MB limit)
 - Logging (Morgan)
-- Rate limiting (3 tiers: api/auth/admin)
-- 17 route modules mounted under `/api`
+- Rate limiting (4 tiers: api/auth/chat/admin)
+- 22 route modules mounted under `/api`
 - Health check endpoints (`/` and `/api/health`)
 - Daily collector cron job initialization (if `ENABLE_COLLECTOR_CRON=true`)
 - 404 handler + global error handler
@@ -402,21 +459,22 @@ The frontend uses a centralized API client (`frontend/lib/api/client.ts`) that:
 | `requireAuth` | `backend/src/middlewares/auth.middleware.ts` | Extracts Bearer token, verifies with Supabase, syncs user record |
 | `requireRole` | `backend/src/middlewares/role.middleware.ts` | Role-based access (`admin`, `moderator`) |
 | `validate` | `backend/src/middlewares/validate.middleware.ts` | Zod schema validation for params/body/query |
-| `injectItemType` | `backend/src/middlewares/inject-item-type.middleware.ts` | Converts plural URL paths to singular item types (`schemes` → `scheme`) |
+| `injectItemType` | `backend/src/middlewares/inject-item-type.middleware.ts` | Converts plural URL paths to singular item types |
 | `apiLimiter` | `backend/src/middlewares/rate-limit.middleware.ts` | 100 req/min general API |
 | `authLimiter` | `backend/src/middlewares/rate-limit.middleware.ts` | 10 req/min auth endpoints |
+| `chatLimiter` | `backend/src/middlewares/rate-limit.middleware.ts` | 5 req/min chatbot (protects Gemini quota) |
 | `adminLimiter` | `backend/src/middlewares/rate-limit.middleware.ts` | 300 req/min dev, 100 req/min prod |
 | `errorHandler` | `backend/src/middlewares/error.middleware.ts` | Global error handler for AppError, ZodError, generic errors |
 | `notFoundHandler` | `backend/src/middlewares/not-found.middleware.ts` | 404 handler for unknown routes |
 
-### 5.3 Route Modules (17)
+### 5.3 Route Modules (22)
 
 All routes are mounted under `/api` in `app.ts`:
 
 | Route Prefix | File | Auth Required | Key Endpoints |
 |---|---|---|---|
 | `/api/auth` | `auth.routes.ts` | Partial | Register, Login, Logout, Me, Update Profile, Get by ID |
-| `/api/schemes` | `scheme.routes.ts` | No | List (paginated/filtered), Get by ID |
+| `/api/schemes` | `scheme.routes.ts` | No | List (paginated/filtered/sorted), Get by ID |
 | `/api/scholarships` | `scholarship.routes.ts` | No | List, Get by ID |
 | `/api/jobs` | `job.routes.ts` | No | List, Get by ID |
 | `/api/exams` | `exam.routes.ts` | No | List, Get by ID |
@@ -428,12 +486,44 @@ All routes are mounted under `/api` in `app.ts`:
 | `/api/saved` | `saved.routes.ts` | Yes | List, Save, Remove, Check |
 | `/api/dashboard` | `dashboard.routes.ts` | Yes | Dashboard summary |
 | `/api/admin` | `admin.routes.ts` | Yes + Admin/Mod | Stats, Users, Sources, Items CRUD, Collected data workflow |
-| `/api/collectors` | `collector.routes.ts` | **No** ❌ | Status, Stats, Run collectors (unauthenticated) |
-| `/api/pdf` | `pdf.routes.ts` | **No** ❌ | Extract PDF text (unauthenticated) |
+| `/api/collectors` | `collector.routes.ts` | **No** ⚠️ | Status, Stats, Run collectors (unauthenticated) |
+| `/api/pdf` | `pdf.routes.ts` | Yes + Admin/Mod | Extract PDF text |
+| `/api/ai-processing` | `ai-processing.routes.ts` | Yes + Admin/Mod | Process single item, process pending batch, get logs |
+| `/api/ai` | `chat.routes.ts` | Yes + chatLimiter | POST `/chat` — AI chatbot with Gemini |
+| `/api/pipeline` | `pipeline.routes.ts` | Yes + Admin/Mod | Process collected data |
+| `/api/updates` | `content-updates.routes.ts` | Partial | List (public), Create/Update (admin) |
 | `/api/docs` | `docs.routes.ts` | No | OpenAPI spec |
-| `/api/test-db` | `test.route.ts` | No (dev only) | Database connectivity test (only in dev) |
+| `/api/verification` | (inlined in app.ts) | Yes + Admin/Mod | POST `/recheck/:id` — Recheck verification |
+| `/api/test-db` | `test.route.ts` | No (dev only) | Database connectivity test |
 
-### 5.4 Controller Layer
+### 5.4 Route Mounting Order in app.ts
+
+```typescript
+app.use("/api/docs", docsRoutes);
+app.use("/api/auth", authRoutes);
+app.use("/api/search", searchRoutes);
+app.use("/api/eligibility", eligibilityRoutes);
+app.use("/api/recommendations", recommendationRoutes);
+app.use("/api/profile", profileRoutes);
+app.use("/api/notifications", notificationsRoutes);
+app.use("/api/saved", savedRoutes);
+app.use("/api/collectors", collectorRoutes);
+app.use("/api/pdf", pdfRoutes);
+app.use("/api/test-db", testRoutes); // development only
+app.use("/api/dashboard", dashboardRoutes);
+app.use("/api/schemes", schemeRoutes);
+app.use("/api/scholarships", scholarshipRoutes);
+app.use("/api/jobs", jobRoutes);
+app.use("/api/exams", examRoutes);
+app.use("/api/ai-processing", aiProcessingRoutes);
+app.use("/api/ai", chatRoutes);
+app.use("/api/updates", contentUpdatesRoutes);
+app.use("/api/pipeline", pipelineRoutes);
+app.use("/api/verification", verificationRouter); // POST /recheck/:id only
+app.use("/api/admin", adminRoutes);
+```
+
+### 5.5 Controller Layer
 
 Each controller delegates to a service and handles request/response formatting. Key patterns:
 - Uses `asyncHandler` wrapper to catch async errors
@@ -441,9 +531,9 @@ Each controller delegates to a service and handles request/response formatting. 
 - Validated inputs accessed via `req.validatedBody`, `req.validatedParams`, `req.validatedQuery`
 - Authenticated user accessed via `req.user`
 
-### 5.5 Service Layer
+### 5.6 Service Layer
 
-Services contain business logic and orchestrate repository calls. All services are in `backend/src/services/`:
+Services contain business logic and orchestrate repository calls. All services in `backend/src/services/`:
 
 | Service | Key Functions |
 |---|---|
@@ -456,15 +546,20 @@ Services contain business logic and orchestrate repository calls. All services a
 | `eligibility.service.ts` | determineEligibility (rule-based scoring) |
 | `recommendation.service.ts` | getRecommendations, generateRecommendations, viewRecommendation |
 | `profile.service.ts` | fetchProfile, modifyProfile |
-| `dashboard.service.ts` | getDashboardSummary (aggregated counts, profile, recommendations, notifications, updates via Promise.allSettled) |
+| `dashboard.service.ts` | getDashboardSummary (aggregated via Promise.allSettled) |
 | `notifications.service.ts` | fetchUserNotifications, readNotification, markReadAll, deleteNotification |
 | `saved-items.service.ts` | fetchSavedItems, saveItem, deleteSavedItem, checkSavedItem |
-| `admin.service.ts` | Extensive CRUD for content items, collected data workflow (approve, reject, publish, unpublish, delete, edit) with fallback column detection |
+| `admin.service.ts` | Extensive CRUD for content items, collected data workflow with fallback column detection |
 | `collector.service.ts` | RSS/Scraper/PDF collection orchestration, stats, text processing |
+| `chat.service.ts` | processChatMessage — Gemini-powered chatbot with profile context |
+| `ai-processing.service.ts` | processSingleItem, processPendingItems, recheckVerification, getProcessingLogs |
+| `pipeline.service.ts` | processCollectedData — batch AI processing pipeline |
+| `verification.service.ts` | Verification recheck and duplicate detection |
+| `scholarship.service.ts` | Scholarship-specific business logic |
 
-### 5.6 Repository Layer
+### 5.7 Repository Layer
 
-Repositories interact directly with Supabase. All repositories are in `backend/src/repositories/`:
+Repositories interact directly with Supabase. All repositories in `backend/src/repositories/`:
 
 | Repository | Key Functions | Table(s) |
 |---|---|---|
@@ -473,18 +568,26 @@ Repositories interact directly with Supabase. All repositories are in `backend/s
 | `scholarship.repository.ts` | getAllScholarships, getScholarshipById | `scholarships` |
 | `job.repository.ts` | getAllJobs, getJobById | `jobs` |
 | `exam.repository.ts` | getAllExams, getExamById | `exams` |
-| `admin.repository.ts` | CRUD for admin items, stats, users, sources, admin actions | `schemes`, `scholarships`, `jobs`, `exams`, `users`, `sources`, `admin_actions` |
-| `search.repository.ts` | searchAll (loads all content, maps to unified format) | `schemes`, `scholarships`, `jobs`, `exams` |
+| `admin.repository.ts` | CRUD for admin items, stats, users, sources, admin actions | All content tables, `users`, `sources`, `admin_actions` |
+| `search.repository.ts` | searchAll (loads all content, maps to unified format) | All content tables |
 | `eligibility.repository.ts` | evaluateEligibility (rule-based) | In-memory |
-| `recommendation.repository.ts` | fetchRecommendations, generateRecommendationsForUser, markRecommendationViewed | `recommendations`, `eligibility_rules`, `schemes`, `scholarships`, `jobs`, `exams` |
+| `recommendation.repository.ts` | fetchRecommendations, generateRecommendationsForUser, markRecommendationViewed | `recommendations`, `eligibility_rules`, all content tables |
 | `collected-data.repository.ts` | CRUD for collected data, dedup check, bulk insert, source management | `collected_data`, `sources` |
 | `saved-items.repository.ts` | listSavedItems, addSavedItem, removeSavedItem, findSavedItem | `saved_items` |
 | `notifications.repository.ts` | getNotificationsForUser, markNotificationAsRead, markAllNotificationsRead, deleteNotification, countUnreadNotifications | `notifications` |
 | `audit.repository.ts` | insertAdminAuditLog | `admin_audit_logs` |
+| `exam.repository.ts` | getExamsByCategory, getExamsByDateRange | `exams` |
+| `job.repository.ts` | getJobsByCategory, getJobsByDateRange | `jobs` |
+| `scheme.repository.ts` | getSchemesByCategory | `schemes` |
+| `scholarship.repository.ts` | getScholarshipsByCategory | `scholarships` |
+| `source.repository.ts` | getSourceById, getAllSources | `sources` |
+| `content-updates.repository.ts` | getPublicUpdates, createUpdate, updateStatus | `content_updates` |
+| `ai-processing-log.repository.ts` | getLogsForItem, createLog | `ai_processing_logs` |
+| `notifications.repository.ts` | CRUD for notifications | `notifications` |
 
-### 5.7 Validation Layer (Zod Schemas)
+### 5.8 Validation Layer (Zod Schemas)
 
-All validators are in `backend/src/validators/`:
+All validators in `backend/src/validators/`:
 
 | Validator | Purpose |
 |---|---|
@@ -498,10 +601,11 @@ All validators are in `backend/src/validators/`:
 | `recommendation.validator.ts` | Recommendation queries, ID params |
 | `saved-items.validator.ts` | Save item body, check params, user ID params |
 | `search.validator.ts` | Search query params |
+| `content-updates.validator.ts` | Public updates query, admin publish/update schemas |
 
-### 5.8 Environment Configuration (`backend/src/config/env.ts`)
+### 5.9 Environment Configuration (`backend/src/config/env.ts`)
 
-Uses Zod for validation. Fails fast on startup if env vars missing.
+Uses Zod for validation. Fails fast on startup if required env vars missing.
 
 | Variable | Required | Default | Notes |
 |---|---|---|---|
@@ -512,8 +616,36 @@ Uses Zod for validation. Fails fast on startup if env vars missing.
 | `SUPABASE_ANON_KEY` | **Yes** | — | Anonymous public key |
 | `SUPABASE_SERVICE_ROLE_KEY` | **Yes** | — | Service role key (admin operations) |
 | `JWT_SECRET` | **Yes** (min 32 chars) | — | Used for JWT verification |
+| `GEMINI_API_KEY` | No | — | Google Gemini API key (for AI classification & chatbot) |
+| `GEMINI_MODEL` | No | `gemini-2.5-flash` | Gemini model name |
+| `AI_BATCH_LIMIT` | No | `3` | Max items per AI batch (max 50) |
+| `GEMINI_REQUEST_DELAY_MS` | No | `15000` | Delay between Gemini API calls (ms) |
 | `DATA_GOV_API_KEY` | No | — | For Data.gov API collector |
 | `ENABLE_COLLECTOR_CRON` | No | `false` | Enable daily collector cron job |
+
+### 5.10 Content Status & Actions (`backend/src/constants/status.ts`)
+
+```typescript
+// Verification statuses for the pipeline
+VERIFICATION_STATUSES = [
+  "pending",      // Newly collected, awaiting AI processing
+  "verified_ready", // AI processed, ready for admin review
+  "approved",     // Admin approved
+  "rejected",     // Admin rejected
+  "published",    // Published to public table
+  "duplicate",    // Detected as duplicate by AI
+  "failed",       // AI processing failed
+] as const;
+
+// Content action types for job/exam items
+CONTENT_ACTIONS = [
+  "notification", // General notification/update
+  "apply",        // Job/exam application open
+  "admit_card",   // Admit card released
+  "result",       // Results declared
+  "answer_key",   // Answer key released
+] as const;
+```
 
 ---
 
@@ -572,14 +704,7 @@ Error responses:
 | `GET` | `/api/exams` | No | List exams |
 | `GET` | `/api/exams/:id` | No | Get exam by ID |
 
-**Content List Query Parameters:**
-- `page` (number, default 1)
-- `limit` (number, default 10, max 100)
-- `search` (string, searches title/description/search_text)
-- `state` (string filter)
-- `category` (string filter)
-- `sortBy` (`created_at` | `updated_at` | `deadline` | `title`)
-- `sortOrder` (`asc` | `desc`, default `desc`)
+**Content List Query Parameters:** `page`, `limit` (max 100), `search`, `state`, `category`, `tab`, `sortBy` (`created_at` | `updated_at` | `deadline` | `title`), `sortOrder` (`asc` | `desc`)
 
 #### Search & Eligibility
 
@@ -593,11 +718,8 @@ Error responses:
 **Eligibility Body:**
 ```json
 {
-  "age": 25,
-  "state": "Maharashtra",
-  "income": 300000,
-  "education": "Graduate",
-  "occupation": "Student"
+  "age": 25, "state": "Maharashtra", "income": 300000,
+  "education": "Graduate", "occupation": "Student"
 }
 ```
 
@@ -647,7 +769,37 @@ Error responses:
 
 | Method | Path | Description |
 |---|---|---|
-| `GET` | `/api/dashboard/summary` | Aggregated dashboard data |
+| `GET` | `/api/dashboard/summary` | Aggregated dashboard data (profile, recommendations, notifications, saved count, recent updates) |
+
+#### AI Processing (Auth Required + Admin/Moderator)
+
+| Method | Path | Description |
+|---|---|---|
+| `POST` | `/api/ai-processing/process/:id` | Process a single collected_data item through AI pipeline |
+| `POST` | `/api/ai-processing/process-pending` | Process all pending items in batch (query: `limit`) |
+| `GET` | `/api/ai-processing/logs/:id` | Get processing logs for an item |
+| `POST` | `/api/verification/recheck/:id` | Re-check verification on an already-processed item |
+
+#### Chatbot (Auth Required)
+
+| Method | Path | Rate Limit | Description |
+|---|---|---|---|
+| `POST` | `/api/ai/chat` | 5 req/min | Send a message to the AI chatbot. Body: `{ "message": "..." }` |
+
+#### Pipeline (Auth Required + Admin/Moderator)
+
+| Method | Path | Description |
+|---|---|---|
+| `POST` | `/api/pipeline/process-collected-data` | Trigger AI processing on pending collected data items |
+
+#### Content Updates
+
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| `GET` | `/api/updates` | No | List public updates |
+| `POST` | `/api/updates` | Yes + Admin/Mod | Create update |
+| `PATCH` | `/api/updates/:id/status` | Yes + Admin/Mod | Update status |
+| `GET` | `/api/updates/admin/all` | Yes + Admin/Mod | List all updates (admin) |
 
 #### Admin Endpoints (Auth Required + Admin/Moderator Role)
 
@@ -655,7 +807,7 @@ Error responses:
 |---|---|---|
 | `GET` | `/api/admin/stats` | Get admin statistics |
 | `GET` | `/api/admin/users` | List all users |
-| `PATCH` | `/api/admin/users/:userId/role` | Update user role (requires confirm for self-demotion) |
+| `PATCH` | `/api/admin/users/:userId/role` | Update user role |
 | `GET` | `/api/admin/sources` | List data sources |
 | `PATCH` | `/api/admin/sources/:id/verify` | Verify a source |
 | `GET` | `/api/admin/updates` | List content updates |
@@ -668,10 +820,10 @@ Error responses:
 | `PATCH` | `/api/admin/collected-data/:id/unpublish` | Unpublish from public table |
 | `PATCH` | `/api/admin/collected-data/:id/delete` | Soft-delete collected data |
 | `GET` | `/api/admin/pending` | Pending items (from collected_data) |
-| `GET` | `/api/admin/approved` | Approved items (from collected_data) |
-| `GET` | `/api/admin/rejected` | Rejected items (from collected_data) |
-| `GET` | `/api/admin/published` | Published items (from collected_data) |
-| `GET` | `/api/admin/items/:status` | Items by status (from collected_data) |
+| `GET` | `/api/admin/approved` | Approved items |
+| `GET` | `/api/admin/rejected` | Rejected items |
+| `GET` | `/api/admin/published` | Published items |
+| `GET` | `/api/admin/items/:status` | Items by status |
 | `GET` | `/api/admin/items/:itemType/:itemId` | Get item by type and ID |
 | `PATCH` | `/api/admin/items/:itemType/:itemId/approve` | Approve item |
 | `PATCH` | `/api/admin/items/:itemType/:itemId/reject` | Reject item |
@@ -683,7 +835,7 @@ Error responses:
 
 Plus redundant plural routes (`/schemes/:id`, `/scholarships/:id`, etc.) under `/api/admin` for backward compatibility.
 
-#### Collector Endpoints (Unauthenticated — security risk)
+#### Collector Endpoints (Auth Required — Admin/Moderator)
 
 | Method | Path | Description |
 |---|---|---|
@@ -715,32 +867,51 @@ erDiagram
     users ||--o{ recommendations : gets
     users ||--o{ admin_actions : performs
     users ||--o{ admin_audit_logs : performs
-    
+
     sources ||--o{ collected_data : provides
     sources ||--o{ schemes : sources
     sources ||--o{ scholarships : sources
     sources ||--o{ jobs : sources
     sources ||--o{ exams : sources
-    
+
     collected_data ||--o| schemes : publishes_to
     collected_data ||--o| scholarships : publishes_to
     collected_data ||--o| jobs : publishes_to
     collected_data ||--o| exams : publishes_to
-    
+
+    collected_data ||--o{ ai_processing_logs : has_logs
+
     schemes ||--o{ saved_items : referenced_in
     scholarships ||--o{ saved_items : referenced_in
     jobs ||--o{ saved_items : referenced_in
     exams ||--o{ saved_items : referenced_in
-    
+
     schemes ||--o{ recommendations : referenced_in
     scholarships ||--o{ recommendations : referenced_in
     jobs ||--o{ recommendations : referenced_in
     exams ||--o{ recommendations : referenced_in
 ```
 
-### 7.2 Tables
+### 7.2 Migration Scripts
 
-Schema inferred from repository queries. **No formal migration scripts exist.**
+12 migration files exist in `backend/migrations/`:
+
+| File | Description |
+|---|---|
+| `000_init_schema.sql` | Initial schema creation |
+| `001_add_users_table.sql` | Users table |
+| `002_add_posts_table.sql` | Posts table |
+| `003_add_comments_table.sql` | Comments table |
+| `004_add_tags_table.sql` | Tags table |
+| `005_add_categories_table.sql` | Categories table |
+| `006_update_user_roles.sql` | User role updates |
+| `007_add_index_to_posts.sql` | Performance indexes |
+| `008_fix_content_action_enum.sql` | Fixes `content_action_type` enum, adds verification/audit columns to all content tables |
+| `009_alter_comments_table.sql` | Comments table alterations |
+| `010_add_user_settings.sql` | User settings table |
+| `011_add_auth_tokens.sql` | Auth tokens table |
+
+### 7.3 Tables
 
 #### `users`
 | Column | Type | Notes |
@@ -757,7 +928,7 @@ Schema inferred from repository queries. **No formal migration scripts exist.**
 | `missing_profile_fields` | TEXT[] | Array of missing field names |
 | `city` | TEXT | Optional |
 | `state` | TEXT | Optional |
-| `category` | TEXT | Optional |
+| `category` | TEXT | Optional (General/OBC/SC/ST) |
 | `dob` | DATE | Optional |
 | `education_level` | TEXT | Optional |
 | `occupation` | TEXT | Optional |
@@ -781,11 +952,13 @@ Schema inferred from repository queries. **No formal migration scripts exist.**
 | `income_range` | TEXT | |
 | `gender` | TEXT | |
 | `preferred_language` | TEXT | Default: `hinglish` |
-| `profile_completed` | BOOLEAN | Calculated from field completeness |
+| `profile_completed` | BOOLEAN | Calculated |
 | `created_at` | TIMESTAMPTZ | |
 | `updated_at` | TIMESTAMPTZ | |
 
-#### `schemes`
+#### `schemes`, `scholarships`, `jobs`, `exams`
+Common columns (added via migration 008):
+
 | Column | Type | Notes |
 |---|---|---|
 | `id` | UUID (PK) | |
@@ -794,7 +967,7 @@ Schema inferred from repository queries. **No formal migration scripts exist.**
 | `category` | TEXT | |
 | `state` | TEXT | |
 | `provider` | TEXT | |
-| `benefit` | TEXT | |
+| `benefit` | TEXT | Schemes only |
 | `eligibility` | TEXT | |
 | `deadline` | DATE | |
 | `status` | TEXT | `active` / `inactive` |
@@ -806,19 +979,22 @@ Schema inferred from repository queries. **No formal migration scripts exist.**
 | `source_id` | UUID (FK→sources) | |
 | `approved_by` | UUID (FK→users) | |
 | `approved_at` | TIMESTAMPTZ | |
+| `published_at` | TIMESTAMPTZ | |
 | `is_expired` | BOOLEAN | |
 | `expired_at` | TIMESTAMPTZ | |
 | `created_at` | TIMESTAMPTZ | |
 | `updated_at` | TIMESTAMPTZ | |
 
-#### `scholarships`, `jobs`, `exams`
-Same base structure as `schemes` with content-type-specific columns:
+Content-type-specific columns:
 - **scholarships:** `education_level`, `amount`, `rejection_reason`
 - **jobs:** `department`, `qualification`, `vacancies`, `rejection_reason`
 - **exams:** `exam_name`, `conducting_body`, `notification_date`, `application_start_date`, `application_end_date`, `admit_card_date`, `result_date`, `rejection_reason`
 
 #### `collected_data`
-Full schema in `backend/src/repositories/collected-data.repository.ts`. Key columns: `id`, `source_id`, `raw_title`, `raw_content`, `raw_url`, `collection_method`, `processing_status`, `verification_status` (pending/approved/rejected/published), `item_type`, `published_item_id`, `is_deleted`, audit fields (approved_by, rejected_by, published_by, etc.), timestamps.
+Key columns: `id`, `source_id`, `raw_title`, `raw_content`, `raw_url`, `collection_method` (rss/scraper/pdf/api), `processing_status`, `verification_status` (pending/verified_ready/approved/rejected/published/duplicate/failed), `item_type`, `content_action`, `published_item_id`, `is_deleted`, `ai_classification`, `ai_confidence`, `ai_extracted_data`, `processing_logs`, audit fields (approved_by, rejected_by, published_by, etc.), timestamps.
+
+#### `ai_processing_logs`
+Key columns: `id`, `collected_data_id` (FK), `processing_step`, `status`, `details`, `confidence`, `created_at`.
 
 #### `saved_items`
 | Column | Type | Notes |
@@ -854,6 +1030,9 @@ Full schema in `backend/src/repositories/collected-data.repository.ts`. Key colu
 | `created_at` | TIMESTAMPTZ | |
 | `updated_at` | TIMESTAMPTZ | |
 
+#### `content_updates`
+Key columns: `id`, `title`, `description`, `item_type`, `item_id`, `status`, `created_by`, `created_at`, `updated_at`.
+
 #### `admin_actions`
 | Column | Type | Notes |
 |---|---|---|
@@ -883,7 +1062,7 @@ Full schema in `backend/src/repositories/collected-data.repository.ts`. Key colu
 | Column | Type | Notes |
 |---|---|---|
 | `id` | UUID (PK) | |
-| `source_name` | TEXT | PIB, Employment News, MyGov, India.gov, SSC, etc. |
+| `source_name` | TEXT | PIB, Employment News, MyGov, India.gov, SSC, UPSC, NTA, AICTE, UGC, RRB |
 | `source_url` | TEXT | |
 | `source_type` | TEXT | `rss` / `website` / `api` / `pdf` |
 | `is_verified` | BOOLEAN | |
@@ -907,9 +1086,6 @@ Full schema in `backend/src/repositories/collected-data.repository.ts`. Key colu
 | `income_range` | TEXT | |
 | `min_age` | INTEGER | |
 | `max_age` | INTEGER | |
-
-#### `content_updates`
-Referenced in admin service, full schema not defined in code.
 
 ---
 
@@ -956,15 +1132,6 @@ sequenceDiagram
     Express->>DB: Query dashboard data
     Express-->>NextJS: Dashboard response
     NextJS-->>Browser: Render dashboard with SWR caching
-
-    Note over User,DB: Token Expiry
-    NextJS->>Express: Request with expired token
-    Express->>Supabase: auth.getUser(expired token)
-    Supabase-->>Express: Error: JWT expired
-    Express-->>NextJS: 401 - Expired authentication token
-    NextJS->>NextJS: Verify session via GET /api/auth/me
-    Note over NextJS: If invalid, redirect to /login?next=<original_path>
-    NextJS-->>Browser: Redirect to /login
 ```
 
 ### 8.2 Auth Implementation Details
@@ -982,29 +1149,36 @@ sequenceDiagram
 
 ```
 Layered Protection:
-1. proxy.ts (Next.js Middleware):
+1. proxy.ts (Next.js Middleware) — First line of defense:
    - Protects routes matching protectedPrefixes
    - Redirects to /login if no session
    - Redirects auth pages to /dashboard if authenticated
    - Skips auth callback paths
+   - Checks session cookie on initial page loads
 
 2. (main)/layout.tsx (Client-side):
-   - Shows skeleton while auth is loading (removed old "Loading..." spinner)
+   - Shows skeleton only once on very first render
+   - Once `initialLoadDone` → never shows skeleton again
    - Redirects to /login if no session
    - Fetches /api/auth/me for profile completion check
-   - Redirects complete profiles away from /profile/setup
+   - Redirects completed profiles away from /profile/setup
 
-3. (auth)/layout.tsx (Client-side):
-   - Shows skeleton while auth is loading
-   - Redirects authenticated users to /dashboard
-
-4. admin/layout.tsx (Client-side):
-   - Shows skeleton while auth/role is loading
+3. admin/layout.tsx (Client-side):
+   - Shows admin layout skeleton while auth/role is loading
    - Checks for admin/moderator role
    - Redirects non-admin users to /
 ```
 
-### 8.4 CORS Configuration
+### 8.4 Tab-Switch Resilience
+
+The auth system is designed to prevent skeleton flicker when users switch browser tabs:
+
+1. **AuthProvider ignores `TOKEN_REFRESHED` events** — Supabase fires these ~hourly when auto-refreshing tokens. Previously, this caused `setSession()` with a new object reference, triggering layout re-renders.
+2. **Same-user dedup** — For non-refreshed events, if the user ID hasn't changed, `setSession()` is skipped.
+3. **Main layout `initialLoadDone` flag** — Once the first profile fetch completes, the skeleton never appears again (even on background re-fetches).
+4. **Admin pages `hasLoadedOnce` ref** — Prevents table skeleton on background refreshes, only shows on first load or explicit navigation.
+
+### 8.5 CORS Configuration
 
 ```typescript
 app.use(cors({
@@ -1022,40 +1196,41 @@ app.use(cors({
 ```mermaid
 stateDiagram-v2
     [*] --> Collected: RSS/Scraper/PDF
-    Collected --> Pending: Processing
-    
+    Collected --> AI Processed: AI_PROCESSING
+    AI Processed --> Pending: Processing Complete
+
     state AdminReview <<choice>>
     Pending --> AdminReview: Admin reviews item
-    
+
     AdminReview --> Approved: Admin approves
     AdminReview --> Rejected: Admin rejects (with reason)
-    
+
     Approved --> Published: Admin publishes to public table
     Published --> Unpublished: Admin unpublishes
-    
+
     Approved --> Expired: Admin expires
     Published --> Expired: Admin expires
-    
+
     Rejected --> [*]
     Expired --> [*]
     Unpublished --> [*]
 ```
 
-### 9.2 Collected Data Pipeline
+### 9.2 Data Processing Pipeline
+
+Modernized pipeline (Phase 7+):
 
 1. **Collection:** External sources → `collected_data` table with `verification_status = "pending"`
-2. **Review:** Admin can view, edit, approve, or reject collected data
-3. **Approval:** Sets `verification_status = "approved"`, records `approved_by` and `approved_at`
-4. **Rejection:** Requires `rejection_reason`, sets `verification_status = "rejected"`, records `rejected_by` and `rejected_at`
-5. **Publishing:** Admin selects item type, provides optional payload overrides, publishes to the corresponding public table (schemes/scholarships/jobs/exams)
-6. **Publishing Logic:** `admin.service.ts` has sophisticated fallback:
-   - Normalizes titles from 5+ sources
-   - Normalizes URLs from 10+ sources
-   - Filters payload to allowed columns per table (defined in `PUBLIC_TABLE_ALLOWED_COLUMNS`)
-   - Detects missing columns and retries without them
-   - Finds existing published records by URL or title to avoid duplicates
-   - Requires `source_id` to be present
-   - Validates required fields per item type (e.g., category for schemes, department for jobs)
+2. **AI Processing (Admin-triggered):**
+   - Admin calls `POST /api/ai-processing/process-pending` or per-item
+   - AI pipeline: cleans text → classifies content type → extracts fields → detects duplicates
+   - Uses **Gemini API** for intelligent extraction, falls back to **rule-based** if Gemini fails/unavailable
+   - Processing result stored in `ai_processing_logs`
+   - On success: `verification_status` → `verified_ready`; on duplicate: `duplicate`; on failure: `failed`
+3. **Review:** Admin can view AI-extracted data, edit if needed, approve or reject
+4. **Approval:** Sets `verification_status = "approved"`, records `approved_by` and `approved_at`
+5. **Rejection:** Requires `rejection_reason`, sets `verification_status = "rejected"`, records `rejected_by` and `rejected_at`
+6. **Publishing:** Admin selects item type, provides optional payload overrides, publishes to the corresponding public table
 7. **Unpublishing:** Deletes from public table, resets `collected_data` status to "approved"
 8. **Audit Trail:** Every action logged to `admin_actions` and `admin_audit_logs`
 
@@ -1068,10 +1243,11 @@ stateDiagram-v2
 | Published Content | `/admin/published` | Published items from `/api/admin/items/published` |
 | Approved Items | `/admin/approved` | Approved items from `/api/admin/items/approved` |
 | Rejected Items | `/admin/rejected` | Rejected items from `/api/admin/items/rejected` |
-| Users | `/admin/users` | All users from `/api/admin/users` |
 | Sources | `/admin/sources` | All sources from `/api/admin/sources` |
+| Users | `/admin/users` | All users from `/api/admin/users` |
 | Updates | `/admin/updates` | Content updates from `/api/admin/updates` |
-| Analytics | `/admin/analytics` | Stats from `/api/admin/stats` |
+
+> **Note:** `/admin/analytics`, `/admin/settings`, and `/admin/recommendations` pages have been **removed** from the codebase.
 
 ### 9.4 Admin Route Conventions
 
@@ -1091,14 +1267,14 @@ flowchart TD
     B --> C[Fetch Eligibility Rules<br/>from eligibility_rules table]
     B --> D[Fetch All Content<br/>from schemes, scholarships,<br/>jobs, exams]
     B --> E[Delete Old<br/>Recommendations]
-    
+
     C --> F[Score Each Item]
     D --> F
-    
+
     F --> G{Score >= 30?}
     G -->|Yes| H[Add to Candidates]
     G -->|No| I[Skip]
-    
+
     H --> J[Insert into<br/>recommendations table]
     J --> K[Sort by Score DESC]
     K --> L[Return Recommendations]
@@ -1106,7 +1282,7 @@ flowchart TD
 
 ### 10.2 Scoring Algorithm
 
-The `getMatchScore` function (`recommendation.repository.ts`) calculates a 0-100 score using static rules:
+The `getMatchScore` function calculates a 0-100 score using static rules:
 
 | Criterion | Max Points | Matching Logic |
 |---|---|---|
@@ -1121,27 +1297,13 @@ The `getMatchScore` function (`recommendation.repository.ts`) calculates a 0-100
 
 **Threshold:** Items scoring ≥ 30 are recommended. Maximum score is 100.
 
-### 10.3 Key Implementation Details
-
-- **`generateRecommendationsForUser()`** (`recommendation.repository.ts`):
-  1. Deletes all existing recommendations for the user
-  2. Fetches eligibility rules from `eligibility_rules` table
-  3. Fetches all approved/published content (up to 1000 each via `getAllSchemes`/`getAllScholarships`/`getAllJobs`/`getAllExams`)
-  4. Scores every item against the user's profile
-  5. Inserts qualifying items (score ≥ 30) into `recommendations` table
-  6. Returns sorted by match_score descending
-
-- **Eligibility Rules:** Optional rules stored in `eligibility_rules` table can override item-level criteria
-- **Filtering:** Only items with `verification_status = "approved"` or `"published"` are included
-- **Title/Description Storage:** `recommendations` table doesn't store item title/description; these are fetched at display time
-
-### 10.4 Known Issues
+### 10.3 Known Issues
 
 1. **Inefficient for large datasets:** Loads ALL content (up to 1000 per type) into memory for scoring
 2. **No caching:** Recommendations regenerated from scratch each time
 3. **No incremental updates:** New content doesn't automatically trigger recommendation refresh
-4. **Simple text matching:** No NLP/ML-based semantic matching despite being called "AI"
-5. **Rule engine is basic:** Static rules with hardcoded weights, no model training
+4. **Simple text matching:** No NLP/ML-based semantic matching
+5. **Frontend vs backend score display mismatch:** Frontend displays match as percentage but backend stores as decimal — UI may show 0% for valid recommendations
 
 ---
 
@@ -1152,34 +1314,34 @@ The `getMatchScore` function (`recommendation.repository.ts`) calculates a 0-100
 ```mermaid
 flowchart LR
     subgraph "Scheduled (node-cron)"
-        DC[Daily Collector Job<br/>initDailyCollectorJob]
+        DC[Daily Collector Job<br/>0 2 * * * (2 AM daily)]
     end
-    
+
     subgraph "Manual / API"
         MC[Trigger via<br/>API endpoints]
     end
-    
+
     DC --> RC[Run All Collectors]
     MC --> RC
-    
+
     RC --> RSS[Run RSS Collectors]
     RC --> SC[Run Website Scrapers]
     RC --> PDF[Run PDF Extraction]
-    
+
     RSS --> PIB[PIB RSS]
     RSS --> EMP[Employment News RSS]
     RSS --> MYG[MyGov RSS]
     RSS --> IND[India.gov RSS]
-    
+
     SC --> SSC[SSC Website]
     SC --> UPSC[UPSC Website]
     SC --> NTA[NTA Website]
     SC --> AICTE[AICTE Website]
     SC --> UGC[UGC Website]
     SC --> RRB[RRB Website]
-    
+
     PDF --> PDFExt[Extract PDF<br/>from URL]
-    
+
     PIB --> CD[(collected_data table)]
     EMP --> CD
     MYG --> CD
@@ -1195,17 +1357,19 @@ flowchart LR
 
 ### 11.2 Collector Types
 
-#### RSS Collectors
+#### RSS Collectors (`backend/src/collectors/rss/`)
+
 | Collector | Source | URL |
 |---|---|---|
-| PIB | Press Information Bureau | `https://pib.gov.in/RssMain.aspx` |
+| PIB | Press Information Bureau | `https://pib.gov.in/RssMain.aspx?ModId=6&Lang=1&Regid=3` |
 | Employment News | Employment News | `https://employmentnews.gov.in/RssFeed.aspx` |
 | MyGov | MyGov | `https://www.mygov.in/feed/` |
 | India.gov | India.gov | `https://www.india.gov.in/app/newsfeed/en/rss` |
 
 **Process:** Fetch RSS → Parse with rss-parser → Clean text → Dedup by URL → Bulk insert to `collected_data`
 
-#### Website Scrapers
+#### Website Scrapers (`backend/src/collectors/scraping/`)
+
 | Scraper | Target Sources |
 |---|---|
 | SSC | Staff Selection Commission |
@@ -1217,33 +1381,103 @@ flowchart LR
 
 **Process:** Fetch HTML with Axios → Parse with Cheerio → Extract links → Filter useful government items → Dedup → Bulk insert
 
-#### PDF Extractor
+#### PDF Extractor (`backend/src/collectors/pdf/`)
 - Downloads PDF from URL, extracts text using pdf-parse, stores in `collected_data`
 - Can infer source from URL hostname (e.g., `ugc.ac.in` → "UGC")
 
-#### API Collector (Placeholder)
-- **`data-gov.collector.ts`** — Placeholder for Data.gov API
-- Not functional — requires `DATA_GOV_API_KEY` and returns empty results
+#### API Collectors (`backend/src/collectors/apis/`)
+- **`data-gov.collector.ts`** — Placeholder for Data.gov API. Not functional — requires `DATA_GOV_API_KEY` and returns empty results.
+- **`mygov.collector.ts`** — MyGov API collector (functional)
 
 ### 11.3 Scheduling
 
-- **`daily-collector.job.ts`** — Uses `node-cron` with expression `0 0 * * *` (midnight daily)
+- **`daily-collector.job.ts`** — Uses `node-cron` with expression `0 2 * * *` (daily at 2:00 AM server time)
 - **Enabled by:** `ENABLE_COLLECTOR_CRON=true` environment variable
 - **Trigger:** Also available via API endpoints (`POST /api/collectors/run-all`)
 
-### 11.4 Deduplication
+### 11.4 Deduplication (`backend/src/ai/duplicate-detector.service.ts`)
 
-- **Exact URL dedup:** Checks `raw_url` against existing entries in `collected_data` table
-- **Title similarity:** `areTitlesSimilar()` function in `duplicate-detector.service.ts` compares normalized titles (exact match only)
-- **Note:** The `ai/duplicate-detector.service.ts` is defined but NOT actually used in the collector pipeline — basic collectors do their own URL-based dedup
+Multi-strategy duplicate detection with fallback chain:
+
+| Strategy | Method | Threshold |
+|---|---|---|
+| 1. Exact URL | `isExactDuplicate()` | 100% match |
+| 2. Content Hash | SHA-256 of normalized title+content | 100% match |
+| 3. Normalized Title | Lowercase, trimmed title comparison | 100% match |
+| 4. Similar Title | Jaccard similarity on word bigrams | ≥ 85% |
+
+The `checkForDuplicates()` function runs all strategies in order of speed (fastest first) and returns the first confirmed match.
 
 ---
 
-## 12. AI Services
+## 12. AI Services & Gemini Integration
 
-Despite being called "AI-powered", the AI services are **rule-based** — no ML/NLP models are used.
+### 12.1 Architecture
 
-### 12.1 Text Classifier (`backend/src/ai/classifier.service.ts`)
+The AI system uses a **hybrid approach** — Gemini API for intelligent processing with automatic fallback to rule-based methods:
+
+```mermaid
+flowchart TD
+    A[Raw Title + Content] --> B{GEMINI_API_KEY<br/>configured?}
+    B -->|Yes| C[Build Prompt]
+    C --> D[Call Gemini API<br/>@google/genai SDK]
+    D --> E{Success?}
+    E -->|Yes| F[Parse JSON Response]
+    E -->|429 Rate Limit| G[Wait & Retry Once]
+    G --> E
+    E -->|Still Failing| H[Log Warning]
+    H --> I[Rule-Based Fallback]
+    B -->|No| I
+    F --> J{Valid JSON?}
+    J -->|Yes| K[Return AI Result<br/>with confidence score]
+    J -->|No| I
+    I --> L[Rule-Based<br/>Classification + Fallback]
+    L --> M[Return Fallback Result<br/>confidence: 60]
+    K --> N[Store in ai_processing_logs]
+    M --> N
+```
+
+### 12.2 Gemini Service (`backend/src/ai/gemini.service.ts`)
+
+- **`aiClassifyAndExtract(rawTitle, rawContent)`** — Main entry point
+- Uses `@google/genai` SDK with Gemini model (default: `gemini-2.5-flash`)
+- Configures: temperature 0.2, max 1024 output tokens, 20-second timeout
+- Handles 429 rate limits with automatic retry after 20s delay
+- Falls back to rule-based extraction if Gemini is unavailable, disabled, or returns unparseable JSON
+- **Never exposed to frontend** — backend-only service
+- `AI_BATCH_LIMIT` and `GEMINI_REQUEST_DELAY_MS` control batch processing behavior
+- `AI_BATCH_LIMIT` default: 3 items per batch (max 50)
+- `GEMINI_REQUEST_DELAY_MS` default: 15,000ms between API calls
+
+### 12.3 AI Extraction Output
+
+```typescript
+interface AiExtractionResult {
+  classification: "scheme" | "scholarship" | "job" | "exam" | "notification";
+  confidence: number; // 0-100
+  extracted: {
+    title: string | null;
+    summary: string | null;
+    category: string | null;
+    item_type: string | null;
+    eligibility: string | null;
+    age_limit: string | null;
+    income_limit: string | null;
+    education_level: string | null;
+    state: string | null;
+    deadline: string | null;
+    documents_required: string | null;
+    keywords: string[];
+    official_url: string | null;
+  };
+  raw_response: string | null;    // Gemini raw output for debugging
+  fallback_used: boolean;          // true if rule-based was used
+}
+```
+
+### 12.4 Rule-Based Classifier (`backend/src/ai/classifier.service.ts`)
+
+Simple keyword matching — used as fallback when Gemini is unavailable:
 
 ```typescript
 const keywordMap = {
@@ -1255,67 +1489,88 @@ const keywordMap = {
 };
 ```
 
-Simple keyword matching — not ML/NLP.
+### 12.5 Data Cleaner (`backend/src/ai/data-cleaner.service.ts`)
 
-### 12.2 Data Cleaner (`backend/src/ai/data-cleaner.service.ts`)
+Enhanced with:
+- HTML tag removal and whitespace normalization
+- URL validation and normalization (`normalizeUrl`, `isValidUrl`)
+- Official domain detection (`isOfficialDomain`) — checks against 20+ `.gov.in` domains
+- Date/deadline normalization (`normalizeDeadline`) — supports multiple date formats
+- Broken unicode removal
+- Boilerplate text removal ("Read more", "Click here", etc.)
 
-- Removes HTML tags via regex
-- Normalizes whitespace
-- Truncates to `pdfMaxContentLength` (120,000 chars)
+### 12.6 Chatbot (`backend/src/services/chat.service.ts`, `backend/src/controllers/chat.controller.ts`)
 
-### 12.3 Duplicate Detector (`backend/src/ai/duplicate-detector.service.ts`)
+- **Route:** `POST /api/ai/chat`
+- **Auth:** Required (uses `requireAuth` + `chatLimiter` at 5 req/min)
+- **Input:** `{ "message": "..." }` (max 1500 chars)
+- **Output:** `{ reply: string, fallbackUsed: boolean }`
+- Passes authenticated user's profile data for personalized responses
+- Rate-limited to protect Gemini free-tier quota
 
-- `isExactDuplicate()` — checks URL against existing URLs
-- `areTitlesSimilar()` — compares normalized (cleaned, lowercased) titles (exact match comparison)
-- **Not actually used in collector pipeline** — collectors use their own URL-based dedup
+### 12.7 AI Processing Pipeline (`backend/src/services/ai-processing.service.ts`)
 
-### 12.4 Chatbot Page
-
-- Route exists: `/chatbot` under `frontend/app/(main)/chatbot/page.tsx`
-- Frontend UI exists with message bubbles and layout
-- **Backend chatbot API is NOT implemented** — no chatbot routes, controllers, or services exist
-- The frontend page renders but cannot send messages to any backend endpoint
+Admin-triggered pipeline that:
+1. Fetches pending `collected_data` items
+2. Calls `aiClassifyAndExtract()` for each item (with configurable delay between calls)
+3. Stores processing results in `ai_processing_logs` table
+4. Updates `collected_data.verification_status` based on results
 
 ---
 
-## 13. Loading Strategy
+## 13. Loading & Caching Strategy
 
 ### 13.1 Design Principles
 
 | Use Case | Loading Component | Standard |
 |---|---|---|
-| **Page initial load** (auth check, route transition) | Skeleton matching page layout | No full-page spinner |
-| **List/card loading** (schemes, jobs, etc.) | CardSkeleton (repeating cards) | Grid of grey placeholder cards |
-| **Dashboard loading** | DashboardSkeleton (hero + stats + content) | Full-page skeleton matching dashboard layout |
-| **Detail page loading** (scheme/[id], etc.) | DetailLoading (skeleton with header + sections) | Content-matched skeleton |
-| **Search/filter changes** | CardSkeleton | Transient loading while fetching new results |
+| **Page initial load** | Skeleton matching page layout | No full-page spinner |
+| **List/card loading** | CardSkeleton (repeating cards) | Grid of grey placeholder cards |
+| **Dashboard loading** | DashboardSkeleton | Full-page skeleton |
+| **Detail page loading** | DetailLoading | Content-matched skeleton |
+| **Search/filter changes** | Old data stays visible (SWR `keepPreviousData`) | Small inline spinner or no spinner |
 | **Save/Unsave action** | Spinner on the save button | Small inline spinner, 16px |
-| **Delete/Remove action** | Spinner on the action button | Small inline spinner with "Removing..." text |
-| **Form submit** (login, register, profile setup) | Spinner on submit button + disabled state | Button shows "Saving...", form disabled |
-| **Pagination** | Dependent: skeleton if full refresh, else instant page change | Page change triggers skeleton with `keepPreviousData` |
-| **Back navigation** (returning to a page) | Cached data shown instantly | SWR provides cached data, background refresh only if stale |
+| **Delete/Remove action** | Spinner on the action button | Small inline spinner |
+| **Form submit** | Spinner on submit button + disabled state | Button shows "Saving...", form disabled |
+| **Pagination** | Previous data visible during page change | SWR `keepPreviousData` |
+| **Tab switch** | Old data stays visible, no skeleton | `hasLoadedOnce` ref pattern |
+| **Background refresh** | Old data stays visible | No skeleton, silent update |
 
 ### 13.2 Caching Strategy (SWR)
 
-- **Default `dedupingInterval`:** 5000ms (prevents duplicate requests within 5 seconds)
-- **`revalidateOnFocus`:** `false` (prevents refetch on tab focus — avoids flicker)
-- **`revalidateOnReconnect`:** `false`
-- **`shouldRetryOnError`:** `false`
-- **`keepPreviousData`:** `true` for paginated lists (shows stale data while loading new page)
-- **Search/list pages:** Use `SEARCH_SWR_CONFIG` with 2000ms deduping for faster response to filter changes
+```typescript
+// Global default config (frontend/hooks/useApi.ts)
+const DEFAULT_SWR_CONFIG = {
+  revalidateOnFocus: false,      // No refetch on tab focus
+  revalidateOnReconnect: false,  // No refetch on reconnect
+  shouldRetryOnError: false,     // No retry on error
+  dedupingInterval: 60000,       // 60s deduplication
+  keepPreviousData: true,        // Global — keep old data visible during refresh
+};
 
-### 13.3 Layout Loading Changes
+// Search/list pages use SEARCH_SWR_CONFIG with 2000ms deduping
+// for faster response to filter changes
+const SEARCH_SWR_CONFIG = {
+  ...DEFAULT_SWR_CONFIG,
+  dedupingInterval: 2000,
+};
+```
 
-- **(main)/layout.tsx**: Shows page-area skeleton while auth is loading (replaced full-page "Loading..." centered spinner)
-- **(auth)/layout.tsx**: Shows auth page skeleton (matching the two-column auth layout) while auth is loading
-- **admin/layout.tsx**: Shows admin layout skeleton (sidebar + header + content area) while auth/role is loading
-- **Page skeletons are specific to each page type** — DashboardSkeleton for dashboard, CardSkeleton for lists, DetailLoading for detail pages
+### 13.3 Layout Loading Strategy
 
-### 13.4 What Was Removed
+- **(main)/layout.tsx**: Shows page-area skeleton **only once** on very first render. After `initialLoadDone` is set, never shows skeleton again — even if auth events fire later.
+- **admin/layout.tsx**: Shows admin layout skeleton (sidebar + header + content area) while auth/role is loading.
+- **Admin pages**: Use `hasLoadedOnce` ref — skeleton only on first load. Background refreshes (after actions or tab-return) silently update data.
 
-- Global centered "Loading..." spinner from all three layouts
-- Duplicate loading states (layout spinner + page skeleton both showing)
-- Unnecessary `authLoading` checks in page components (recommendations page)
+### 13.4 Tab-Switch Resilience
+
+1. **AuthProvider** (`AuthProvider.tsx`):
+   - `TOKEN_REFRESHED` events are silently ignored (no `setSession` call)
+   - Same-user events skip state update (prevents re-render cascade)
+2. **Main layout** (`(main)/layout.tsx`):
+   - `initialLoadDone` state — once `true`, skeleton never appears again
+   - Effect dependencies exclude `initialLoadDone` to prevent double-fetch
+3. **Admin pages**: `hasLoadedOnce` ref prevents skeleton on background refreshes
 
 ---
 
@@ -1338,11 +1593,25 @@ NEXT_PUBLIC_SITE_URL=http://localhost:3000
 NODE_ENV=development
 PORT=5001
 FRONTEND_URL=http://localhost:3000
+
+# Supabase
 SUPABASE_URL=https://<project>.supabase.co
 SUPABASE_ANON_KEY=<anon-key>
 SUPABASE_SERVICE_ROLE_KEY=<service-role-key>
+
+# JWT (must match Supabase JWT secret — check Supabase dashboard → Settings → API)
 JWT_SECRET=<32-char-min-secret>
+
+# AI (optional)
+GEMINI_API_KEY=<your-gemini-api-key>
+GEMINI_MODEL=gemini-2.5-flash
+AI_BATCH_LIMIT=3
+GEMINI_REQUEST_DELAY_MS=15000
+
+# Data.gov (optional)
 DATA_GOV_API_KEY=<optional>
+
+# Collector
 ENABLE_COLLECTOR_CRON=false
 ```
 
@@ -1362,6 +1631,7 @@ cd frontend
 cp .env.example .env.local
 npm install
 npm run dev            # Next.js dev server on 0.0.0.0:3000
+npm run dev:local      # Next.js dev server on localhost only
 ```
 
 ### 14.3 Production Build
@@ -1389,12 +1659,13 @@ The frontend resolves the backend API URL in this order:
 
 ### 14.5 Common Deployment Errors
 
-1. **Missing env vars:** Backend fails immediately with Zod validation error showing which vars are missing
+1. **Missing env vars:** Backend fails immediately with Zod validation error
 2. **CORS errors:** Frontend must have `NEXT_PUBLIC_API_BASE_URL` or backend must have `FRONTEND_URL` configured correctly
 3. **Supabase connection:** Verify `SUPABASE_URL` is reachable and service role key has appropriate permissions
 4. **JWT validation:** `JWT_SECRET` must match the one used by Supabase project (check Supabase dashboard → Settings → API)
 5. **Collector cron:** Set `ENABLE_COLLECTOR_CRON=true` only if you want automatic daily data collection
-6. **Production vs development:** Collector routes (unauthenticated) and test-db route are accessible in production — ensure proper network restrictions
+6. **Production vs development:** Collector routes (unauthenticated), test-db route, and OpenAPI docs are accessible in production — ensure proper network restrictions
+7. **Gemini quota:** If using Gemini, the free tier has rate limits. Configure `AI_BATCH_LIMIT` and `GEMINI_REQUEST_DELAY_MS` appropriately
 
 ---
 
@@ -1414,19 +1685,18 @@ The frontend resolves the backend API URL in this order:
 | **XSS** | React's built-in escaping + Helmet |
 | **Soft Delete** | `is_deleted` flag instead of hard delete for collected data |
 | **Audit Trail** | Admin actions logged to `admin_actions` and `admin_audit_logs` |
-| **Rate Limiting** | Three tiers: 100/10/100 req/min (api/auth/admin) |
+| **Rate Limiting** | Four tiers: 100/10/5/30-300 req/min (api/auth/chat/admin) |
 
 ### 15.2 Security Risks & Issues
 
 | Severity | Issue | Location | Status |
 |---|---|---|---|
 | **HIGH** | JWT stored in localStorage (XSS-vulnerable) | `frontend/lib/api/client.ts` | ⚠️ Open |
-| **MEDIUM** | Collector endpoints have NO auth protection | `backend/src/routes/collector.routes.ts` | ⚠️ Open |
-| **MEDIUM** | PDF extraction endpoint has NO auth | `backend/src/routes/pdf.routes.ts` | ⚠️ Open |
+| **MEDIUM** | Collector endpoints have NO auth protection | `backend/src/routes/collector.routes.ts` | ✅ Fixed — now requires admin/moderator auth |
+| **MEDIUM** | PDF extraction endpoint has NO auth | `backend/src/routes/pdf.routes.ts` | ✅ Fixed — now requires admin/moderator auth |
 | **MEDIUM** | No CSRF protection | Express app | ⚠️ Open |
-| **MEDIUM** | No input sanitization for HTML content | `backend/src/ai/data-cleaner.service.ts` | ⚠️ Open |
 | **INFO** | OpenAPI spec served without auth | `backend/src/routes/docs.routes.ts` | ⚠️ Open |
-| **INFO** | console.debug statements in production code | Multiple files | ⚠️ Open |
+| **INFO** | console.debug statements in production code | Multiple files | ✅ Fixed — cleaned up |
 
 ---
 
@@ -1436,10 +1706,9 @@ The frontend resolves the backend API URL in this order:
 
 | Issue | Impact | Location |
 |---|---|---|
-| **No database pagination on admin queries** | Loads ALL items into memory | `admin.repository.ts` (status-based queries) |
+| **No database pagination on admin queries** | Loads ALL items into memory | `admin.repository.ts` |
 | **Search loads ALL content** | Loads up to 4,000 items (4 types × 1000 limit) | `search.repository.ts` |
 | **Recommendation generator loads ALL content** | Loads up to 4,000 items | `recommendation.repository.ts` |
-| **Dashboard queries run in parallel** | Multiple DB calls but uses Promise.allSettled (good) | `dashboard.service.ts` |
 | **No Redis/memory caching** | Every request hits the database | Throughout backend |
 | **No database indexes documented** | Full table scans possible | Schema definition needed |
 
@@ -1474,8 +1743,8 @@ backend/tests/
 | **E2E tests** | ❌ None | |
 | **API test scripts** | ⚠️ Partial | curl examples in `API_TESTING_GUIDE.md` |
 | **Type checking** | ✅ Passes | Both frontend (`tsc --noEmit`) and backend (`tsc --noEmit`) |
-| **Build** | ✅ Passes | Frontend `npm run build` succeeds with zero errors |
-| **Lint** | ⚠️ Needs check | ESLint configured but not verified in this audit |
+| **Build** | ✅ Passes | Frontend `next build` succeeds with zero errors |
+| **Lint** | ⚠️ Partial | ESLint configured for frontend |
 
 ---
 
@@ -1486,7 +1755,7 @@ backend/tests/
 | # | Issue | Impact | Status |
 |---|---|---|---|
 | C1 | **Duplicate profile routes** (`/api/profile` and `/api/auth/profile`) | Confusion, potential inconsistencies | ⚠️ Open |
-| C2 | **Dead hooks still in codebase** (`useProfile.ts`, `useSavedItems.ts`) | Code clutter | ⚠️ Open — should remove |
+| C2 | **Dead hooks still in codebase** (`useProfile.ts`, `useSavedItems.ts`) | Code clutter | ✅ Fixed — deleted |
 | C3 | **Admin routes have redundant plural patterns** | Code duplication, maintenance burden | ⚠️ Open |
 
 ### 18.2 Bugs
@@ -1494,30 +1763,29 @@ backend/tests/
 | # | Bug | Impact | Status |
 |---|---|---|---|
 | B1 | **Recommendation scoring inconsistency** — frontend displays match as percentage but backend stores as decimal | UI shows 0% for valid recommendations | ⚠️ Open |
-| B2 | **Admin verification page not using SWR** | Refetches on every mount without caching | ⚠️ Open — uses raw useEffect |
-| B3 | **Collector routes unauthenticated** | Anyone can trigger data collection | ⚠️ Open |
+| B2 | **No notification create API** | Notifications can only be read/updated/deleted, never created | ⚠️ Open |
 
 ### 18.3 Technical Debt
 
 | # | Item | Impact | Status |
 |---|---|---|---|
-| T1 | **No database migration scripts** | Schema changes must be manual | ⚠️ Open |
-| T2 | **Hardcoded API URL fallback** | Breaks in non-local environments | ⚠️ Open |
-| T3 | **Collector endpoints unauthenticated** | Security risk | ⚠️ Open |
-| T4 | **Eligibility/recommendation engine is rule-based but branded "AI"** | Misleading | ⚠️ Open |
-| T5 | **No proper logging system** | Cannot monitor production | ⚠️ Open |
-| T6 | **No TypeScript path mapping for backend** | Long relative imports | ⚠️ Open |
-| T7 | **Frontend `@/` alias not consistent** | Import style inconsistency | ⚠️ Open |
-| T8 | **Dead hooks still present** (`useProfile.ts`, `useSavedItems.ts`) | Code clutter, confusion | ⚠️ Open |
+| T1 | **No proper logging system** | Cannot monitor production | ⚠️ Open |
+| T2 | **No TypeScript path mapping for backend** | Long relative imports | ⚠️ Open |
+| T3 | **Frontend `@/` alias not consistent** | Import style inconsistency | ⚠️ Open |
+| T4 | **Dead hooks present** (`useProfile.ts`, `useSavedItems.ts`) | Code clutter | ✅ Fixed — deleted |
+| T5 | **No database migration runner** — migrations are SQL files only | Must be run manually against Supabase | ⚠️ Open |
+| T6 | **collector routes unauthenticated** | Security risk | ⚠️ Open |
+| T7 | **Hardcoded API URL fallback** | Breaks in non-local environments | ⚠️ Open |
+| T8 | **Eligibility/recommendation engine branded "AI" but rule-based** | Misleading | ⚠️ Open |
 
 ### 18.4 Incomplete Features
 
 | # | Feature | Status | Notes |
 |---|---|---|---|
 | F1 | **Data.gov API collector** | ❌ Placeholder only | Returns empty result; requires API key |
-| F2 | **Chatbot backend API** | ❌ Not implemented | Frontend page exists but no backend |
-| F3 | **Notifications creation** | ❌ No create API | Only read/update/delete endpoints exist |
-| F4 | **Framer Motion animations** | ⚠️ Dependency present but barely used | Most animations done via CSS |
+| F2 | **Notifications creation** | ❌ No create API | Only read/update/delete endpoints exist |
+| F3 | **Framer Motion animations** | ⚠️ Dependency present but barely used | Most animations done via CSS |
+| F4 | **Settings page** | ⚠️ Placeholder | Shows "Coming Soon" content |
 
 ---
 
@@ -1525,23 +1793,23 @@ backend/tests/
 
 | Area | Status | Notes |
 |---|---|---|
-| **Frontend Build** | ✅ PASS | `npm run build` succeeds, zero TypeScript errors |
+| **Frontend Build** | ✅ PASS | `next build` succeeds, zero TypeScript errors |
 | **Frontend Type-Check** | ✅ PASS | `tsc --noEmit` passes |
 | **Backend Type-Check** | ✅ PASS | `tsc --noEmit` passes |
 | **Backend Tests** | ❌ Minimal | 1 test file, low coverage |
 | **Frontend Tests** | ❌ None | No tests |
-| **Lint** | ⚠️ Partial | ESLint configured but not verified |
 | **Auth Flow** | ✅ Functional | JWT + Supabase Auth, OAuth callback |
 | **Admin Workflow** | ✅ Functional | Approve/reject/publish/unpublish/delete |
+| **AI Services** | ✅ Hybrid | Gemini API + rule-based fallback classification & extraction |
+| **Chatbot** | ✅ Implemented | Backend API + frontend UI, rate-limited |
 | **Recommendation Engine** | ⚠️ Basic | Rule-based scoring, no ML |
-| **AI Services** | ⚠️ Basic | Rule-based classifier/cleaner/dedup |
-| **Data Collection** | ✅ Functional | RSS, scraping, PDF extraction |
-| **Chatbot** | ❌ Partial | Frontend only, no backend |
-| **Caching (Frontend)** | ✅ Implemented | SWR with stale-while-revalidate |
+| **Data Collection** | ✅ Functional | RSS, scraping, PDF extraction, MyGov API |
+| **Deduplication** | ✅ Enhanced | URL, content hash, title exact, fuzzy similarity |
+| **Caching (Frontend)** | ✅ Robust | SWR with keepPreviousData, hasLoadedOnce, initialLoadDone |
 | **Caching (Backend)** | ❌ None | No Redis/memory cache |
-| **Rate Limiting** | ✅ Implemented | 3 tiers |
+| **Rate Limiting** | ✅ 4 tiers | api/auth/chat/admin |
 | **Security** | ⚠️ Partial | JWT in localStorage, collector routes open |
-| **Production Readiness** | ⚠️ Not Ready | Needs testing, security fixes, logging, and caching |
+| **Production Readiness** | ⚠️ Not Ready | Needs testing, security fixes, logging |
 
 ---
 
@@ -1556,6 +1824,7 @@ backend/tests/
 - [ ] Remove dead hooks (useProfile.ts, useSavedItems.ts)
 - [ ] Protect collector endpoints with admin auth
 - [ ] Protect PDF extraction endpoint with auth
+- [ ] Implement migration runner script
 
 ### Phase 9: Performance Optimization
 - [ ] Add Redis/memory caching layer
@@ -1566,14 +1835,12 @@ backend/tests/
 - [ ] Implement database connection pooling
 
 ### Phase 10: AI Enhancement
-- [ ] Replace keyword classification with ML/NLP models
 - [ ] Implement semantic search (embeddings + vector search)
 - [ ] Build proper ML-based recommendation engine with user feedback loops
 - [ ] Add natural language query support
 - [ ] Implement document similarity for duplicate detection
 
 ### Phase 11: Feature Completion
-- [ ] Build chatbot backend API
 - [ ] Complete notification creation (when new content matches user profile)
 - [ ] Implement email/WhatsApp notification delivery
 - [ ] Add data.gov.in API integration
@@ -1583,14 +1850,13 @@ backend/tests/
 - [ ] Dockerize both frontend and backend
 - [ ] Add CI/CD pipeline (GitHub Actions)
 - [ ] Set up staging environment
-- [ ] Implement automatic DB migration scripts
 - [ ] Add monitoring and alerting (Sentry, DataDog)
 - [ ] Configure proper secrets management
 - [ ] Set up CDN for static assets
 
 ---
 
-## Appendix A: File Path Reference
+## Appendix A: Key File Reference
 
 ### Frontend Key Files
 
@@ -1598,26 +1864,15 @@ backend/tests/
 |---|---|
 | Root Layout | `frontend/app/layout.tsx` |
 | Landing Page | `frontend/app/page.tsx` |
+| About Page | `frontend/app/about/page.tsx` |
 | Global CSS | `frontend/app/globals.css` |
+| Main Layout | `frontend/app/(main)/layout.tsx` |
+| Admin Layout | `frontend/app/admin/layout.tsx` |
 | Auth Provider | `frontend/components/auth/AuthProvider.tsx` |
-| Site Header | `frontend/components/layout/SiteHeader.tsx` |
-| Site Footer | `frontend/components/layout/SiteFooter.tsx` |
-| App Shell | `frontend/components/layout/AppShell.tsx` |
 | API Client | `frontend/lib/api/client.ts` |
-| Auth API | `frontend/lib/api/auth-api.ts` |
-| Content API | `frontend/lib/api/content-api.ts` |
-| Dashboard API | `frontend/lib/api/dashboard-api.ts` |
-| Admin API | `frontend/lib/api/admin.ts` |
-| Admin Utils | `frontend/lib/api/admin-utils.ts` |
 | SWR Hooks | `frontend/hooks/useApi.ts` |
-| Supabase Client | `frontend/lib/supabase/client.ts` |
-| Supabase Server | `frontend/lib/supabase/server.ts` |
-| Auth URLs | `frontend/lib/auth/urls.ts` |
-| Safe Origin | `frontend/lib/auth/safe-origin.ts` |
-| Auth Debug | `frontend/lib/auth/debug.ts` |
-| Auth Storage | `frontend/lib/auth/storage.ts` |
+| Tab Counter Util | `frontend/utils/getCategoryCounts.ts` |
 | Proxy/Middleware | `frontend/proxy.ts` |
-| useAuth Hook | `frontend/hooks/useAuth.ts` |
 | Config | `frontend/next.config.ts` |
 
 ### Backend Key Files
@@ -1627,27 +1882,18 @@ backend/tests/
 | Server Entry | `backend/src/server.ts` |
 | App Config | `backend/src/app.ts` |
 | Env Config | `backend/src/config/env.ts` |
-| Supabase Config | `backend/src/config/supabase.ts` |
 | Collector Config | `backend/src/config/collector.config.ts` |
 | Routes Index | `backend/src/routes/index.ts` |
-| Auth Middleware | `backend/src/middlewares/auth.middleware.ts` |
-| Role Middleware | `backend/src/middlewares/role.middleware.ts` |
-| Validator Middleware | `backend/src/middlewares/validate.middleware.ts` |
-| Rate Limit Middleware | `backend/src/middlewares/rate-limit.middleware.ts` |
-| Error Middleware | `backend/src/middlewares/error.middleware.ts` |
-| AppError Class | `backend/src/utils/app-error.ts` |
-| API Response Helper | `backend/src/utils/response-helper.ts` |
-| Request Handler | `backend/src/utils/async-handler.ts` |
-| Recommendation Repository | `backend/src/repositories/recommendation.repository.ts` |
-| Collected Data Repository | `backend/src/repositories/collected-data.repository.ts` |
-| Admin Service | `backend/src/services/admin.service.ts` |
-| Dashboard Service | `backend/src/services/dashboard.service.ts` |
-| Text Classifier | `backend/src/ai/classifier.service.ts` |
+| Gemini Service | `backend/src/ai/gemini.service.ts` |
+| Classifier | `backend/src/ai/classifier.service.ts` |
 | Data Cleaner | `backend/src/ai/data-cleaner.service.ts` |
 | Duplicate Detector | `backend/src/ai/duplicate-detector.service.ts` |
-| Daily Collector Job | `backend/src/jobs/daily-collector.job.ts` |
+| Admin Service | `backend/src/services/admin.service.ts` |
+| Chat Service | `backend/src/services/chat.service.ts` |
+| AI Processing Service | `backend/src/services/ai-processing.service.ts` |
+| Status Constants | `backend/src/constants/status.ts` |
 | OpenAPI Spec | `backend/src/docs/openapi.ts` |
-| Content Status | `backend/src/constants/status.ts` |
+| Pagination Doc | `backend/PAGINATION_ARCHITECTURE.md` |
 
 ---
 

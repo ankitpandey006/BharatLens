@@ -16,6 +16,10 @@ import pdfRoutes from "./pdf.routes";
 import docsRoutes from "./docs.routes";
 import testRoutes from "./test.route";
 import dashboardRoutes from "./dashboard.routes";
+import aiProcessingRoutes from "./ai-processing.routes";
+import chatRoutes from "./chat.routes";
+import pipelineRoutes from "./pipeline.routes";
+import contentUpdatesRoutes from "./content-updates.routes";
 
 export {
   schemeRoutes,
@@ -35,4 +39,8 @@ export {
   docsRoutes,
   testRoutes,
   dashboardRoutes,
+  aiProcessingRoutes,
+  chatRoutes,
+  pipelineRoutes,
+  contentUpdatesRoutes,
 };

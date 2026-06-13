@@ -143,7 +143,11 @@ export async function apiClient<T = unknown>(
   };
 
   // Remove control flags from fetch options
-  const fetchOptions: RequestInit = { ...options };
+  const fetchOptions: RequestInit = {
+    ...options,
+    // Disable HTTP caching — admin actions (publish/unpublish/delete) must show fresh data
+    cache: "no-store",
+  };
   delete (fetchOptions as Record<string, unknown>).optional;
   delete (fetchOptions as Record<string, unknown>).rawResponse;
 

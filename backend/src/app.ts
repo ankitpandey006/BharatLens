@@ -1,4 +1,4 @@
-import express from "express";
+import express, { Router } from "express";
 import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
@@ -20,7 +20,14 @@ import {
   docsRoutes,
   testRoutes,
   dashboardRoutes,
+  aiProcessingRoutes,
+  chatRoutes,
+  pipelineRoutes,
+  contentUpdatesRoutes,
 } from "./routes";
+import { requireAuth } from "./middlewares/auth.middleware";
+import { requireAdminOrModerator } from "./middlewares/role.middleware";
+import { recheckVerificationHandler } from "./controllers/ai-processing.controller";
 import { env } from "./config/env";
 import { notFoundHandler } from "./middlewares/not-found.middleware";
 import { errorHandler } from "./middlewares/error.middleware";
@@ -100,6 +107,19 @@ app.use("/api/schemes", schemeRoutes);
 app.use("/api/scholarships", scholarshipRoutes);
 app.use("/api/jobs", jobRoutes);
 app.use("/api/exams", examRoutes);
+app.use("/api/ai-processing", aiProcessingRoutes);
+app.use("/api/ai", chatRoutes);
+// Content Updates route
+app.use("/api/updates", contentUpdatesRoutes);
+
+// Pipeline route moved to /api/pipeline to avoid route conflict with /api/ai/chat
+app.use("/api/pipeline", pipelineRoutes);
+
+// Dedicated verification recheck endpoint
+const verificationRouter = Router();
+verificationRouter.post("/recheck/:id", requireAuth, requireAdminOrModerator, recheckVerificationHandler);
+app.use("/api/verification", verificationRouter);
+
 app.use("/api/admin", adminRoutes);
 
 initDailyCollectorJob();

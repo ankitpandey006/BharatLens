@@ -1,6 +1,17 @@
 import { z } from "zod";
 
-export const adminItemTypeSchema = z.enum(["scheme", "scholarship", "job", "exam"]);
+// All valid content types for the admin pipeline
+const ALL_VALID_TYPES = [
+  "scheme", "scholarship", "job", "exam",
+  "admit_card", "result", "answer_key", "notification", "update",
+] as const;
+
+const MAIN_CONTENT_TYPES = ["scheme", "scholarship", "job", "exam"] as const;
+
+export const adminItemTypeSchema = z.enum(MAIN_CONTENT_TYPES);
+
+// Full content type schema (includes update types)
+export const adminContentTypeSchema = z.enum(ALL_VALID_TYPES);
 
 // Transform function to normalize plural to singular
 const normalizeItemType = (data: unknown) => {
@@ -38,8 +49,8 @@ export const adminItemParamSchema = z
     else if (itemType === "jobs") itemType = "job";
     else if (itemType === "exams") itemType = "exam";
 
-    // Validate the normalized type
-    if (!["scheme", "scholarship", "job", "exam"].includes(itemType)) {
+    // Validate the normalized type — accept all valid types
+    if (!ALL_VALID_TYPES.includes(itemType as any)) {
       throw new Error(`Invalid item type: ${itemType}`);
     }
 
@@ -54,25 +65,94 @@ export const adminItemParamSchema = z
   });
 
 export const adminReviewBodySchema = z.object({
-  rejection_reason: z.string().trim().min(1, "Rejection reason is required").optional(),
-  reason: z.string().trim().min(1, "Reason is required").optional(),
+  rejection_reason: z.string().trim().optional(),
+  reason: z.string().trim().optional(),
   admin_notes: z.string().trim().optional(),
-}).refine(
-  (data) => data.rejection_reason || data.reason || data.admin_notes,
-  {
-    message: "Provide rejection_reason, reason, or admin_notes",
-  }
-).transform((data) => ({
+}).transform((data) => ({
   rejection_reason: data.rejection_reason || data.reason || data.admin_notes || "",
   admin_notes: data.admin_notes,
 }));
 
+// ─── Sub-category normalization helper ───────────────────────────
+// Normalizes display labels to internal values
+// Must match CONTENT_ACTIONS in constants/status.ts:
+// notification, apply, admit_card, result, answer_key
+// Note: 'apply_now' is NOT a valid value — use 'apply' instead
+const VALID_SUB_CATEGORIES = ['apply', 'admit_card', 'result', 'answer_key', 'notification'] as const;
+
+function normalizeSubCategory(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const v = String(value).trim().toLowerCase();
+  const map: Record<string, string> = {
+    'apply now': 'apply',
+    'apply': 'apply',
+    'apply_now': 'apply',  // normalize legacy value
+    'admit card': 'admit_card',
+    'admit_card': 'admit_card',
+    'admit-card': 'admit_card',
+    'result': 'result',
+    'results': 'result',
+    'answer key': 'answer_key',
+    'answer_key': 'answer_key',
+    'answer-key': 'answer_key',
+    'answerkey': 'answer_key',
+    'notification': 'notification',
+    'notifications': 'notification',
+    'new notification': 'notification',
+  };
+  const normalized = map[v];
+  if (!normalized && v.length > 0) {
+    // Non-blocking: log but return null instead of throwing
+    console.warn(`Invalid sub_category value: "${value}". Returning null.`);
+  }
+  return normalized ?? null;
+}
+
 export const adminNotesBodySchema = z.object({
   admin_notes: z.string().trim().optional(),
+  // Editable fields that can be sent along with approve/reject
+  title: z.string().trim().optional().nullable(),
+  description: z.string().trim().optional().nullable(),
+  sub_category: z.string().trim().optional().nullable(),
+  content_action: z.string().trim().optional().nullable(),
+  category: z.string().trim().optional().nullable(),
+  item_type: z.string().trim().optional().nullable(),
+  state: z.string().trim().optional().nullable(),
+  deadline: z.string().trim().optional().nullable(),
+  official_url: z.string().trim().optional().nullable(),
+  source_url: z.string().trim().optional().nullable(),
+  eligibility: z.string().trim().optional().nullable(),
+  benefits: z.string().trim().optional().nullable(),
+  organization: z.string().trim().optional().nullable(),
+  vacancies: z.string().trim().optional().nullable(),
+  education: z.string().trim().optional().nullable(),
+  age_limit: z.string().trim().optional().nullable(),
+  salary: z.string().trim().optional().nullable(),
+  application_fee: z.string().trim().optional().nullable(),
+  selection_process: z.string().trim().optional().nullable(),
+  conducting_body: z.string().trim().optional().nullable(),
+  exam_date: z.string().trim().optional().nullable(),
+  amount: z.string().trim().optional().nullable(),
+  income_limit: z.string().trim().optional().nullable(),
+  education_level: z.string().trim().optional().nullable(),
+  required_documents: z.string().trim().optional().nullable(),
+  start_date: z.string().trim().optional().nullable(),
+}).transform((data) => {
+  // Normalize sub_category if provided
+  if (data.sub_category) {
+    const normalized = normalizeSubCategory(data.sub_category);
+    return { ...data, sub_category: normalized, content_action: normalized };
+  }
+  // Also normalize content_action if provided
+  if (data.content_action) {
+    const normalized = normalizeSubCategory(data.content_action);
+    return { ...data, sub_category: normalized, content_action: normalized };
+  }
+  return data;
 });
 
 export const adminPublishBodySchema = z.object({
-  itemType: z.enum(["scheme", "scholarship", "job", "exam", "notification"]),
+  itemType: adminContentTypeSchema.catch("scheme").default("scheme"),
   payload: z.record(z.string(), z.unknown()).optional().default({}),
 });
 
@@ -98,31 +178,54 @@ const normalizeCollectedDataItemType = (data: unknown) => {
 
 export const adminCollectedDataEditSchema = z
   .object({
-    title: z.string().trim().min(1).optional().nullable(),
-    description: z.string().trim().min(1).optional().nullable(),
+    title: z.string().trim().optional().nullable(),
+    description: z.string().trim().optional().nullable(),
     summary: z.string().trim().optional().nullable(),
-    category: z.string().trim().min(1).optional().nullable(),
-    state: z.string().trim().min(1).optional().nullable(),
-    deadline: z.string().trim().optional().nullable(),
-    official_url: z.string().trim().url().optional().nullable(),
-    source_url: z.string().trim().url().optional().nullable(),
-    link: z.string().trim().url().optional().nullable(),
+    sub_category: z.string().trim().optional().nullable(),
+    content_action: z.string().trim().optional().nullable(),
+    category: z.string().trim().optional().nullable(),
+    item_type: z.string().trim().optional().nullable(),
     itemType: z.string().optional().nullable(),
-    item_type: z.string().optional().nullable(),
+    state: z.string().trim().optional().nullable(),
+    deadline: z.string().trim().optional().nullable(),
+    official_url: z.string().trim().optional().nullable(),
+    source_url: z.string().trim().optional().nullable(),
+    link: z.string().trim().optional().nullable(),
     source_id: z.string().trim().optional().nullable(),
     eligibility: z.string().trim().optional().nullable(),
     benefits: z.string().trim().optional().nullable(),
+    organization: z.string().trim().optional().nullable(),
+    vacancies: z.string().trim().optional().nullable(),
+    education: z.string().trim().optional().nullable(),
+    age_limit: z.string().trim().optional().nullable(),
+    salary: z.string().trim().optional().nullable(),
+    application_fee: z.string().trim().optional().nullable(),
+    selection_process: z.string().trim().optional().nullable(),
+    conducting_body: z.string().trim().optional().nullable(),
+    exam_date: z.string().trim().optional().nullable(),
+    amount: z.string().trim().optional().nullable(),
+    income_limit: z.string().trim().optional().nullable(),
+    education_level: z.string().trim().optional().nullable(),
+    required_documents: z.string().trim().optional().nullable(),
+    start_date: z.string().trim().optional().nullable(),
     admin_notes: z.string().trim().optional().nullable(),
     metadata: z.record(z.string(), z.unknown()).optional().nullable(),
     rejection_reason: z.string().trim().optional().nullable(),
   })
-  .transform(normalizeCollectedDataItemType)
-  .refine(
-    (value) => typeof value === "object" && value !== null && Object.keys(value as Record<string, unknown>).length > 0,
-    {
-      message: "Edit payload cannot be empty",
-    },
-  );
+  .transform((data) => {
+    // Normalize sub_category / content_action
+    const result = { ...data };
+    if (result.sub_category) {
+      const normalized = normalizeSubCategory(result.sub_category as string);
+      result.sub_category = normalized;
+      result.content_action = normalized;
+    } else if (result.content_action) {
+      const normalized = normalizeSubCategory(result.content_action as string);
+      result.sub_category = normalized;
+      result.content_action = normalized;
+    }
+    return normalizeCollectedDataItemType(result);
+  });
 
 export const adminUpdateBodySchema = z
   .object({
@@ -143,7 +246,7 @@ export const adminUpdateBodySchema = z
   .refine((value) => !("id" in value), "ID cannot be updated");
 
 export const adminStatusQuerySchema = z.object({
-  itemType: z.enum(["scheme", "scholarship", "job", "exam"]).optional(),
+  itemType: adminContentTypeSchema.optional(),
 });
 
 export const adminSourceParamSchema = z.object({
@@ -163,4 +266,15 @@ export const adminUserRoleSchema = z.object({
 
 export const adminUserParamSchema = z.object({
   userId: z.string().min(1, "User ID is required"),
+});
+
+// ─── Bulk Action Schema ───────────────────────────────────────────
+export const adminBulkActionSchema = z.object({
+  ids: z.array(z.string().min(1)).min(1, "At least one ID is required"),
+  reason: z.string().trim().optional(),
+  targetStatus: z.string().trim().optional(),
+});
+
+export const adminBulkAiProcessSchema = z.object({
+  ids: z.array(z.string().min(1)).min(1, "At least one ID is required"),
 });

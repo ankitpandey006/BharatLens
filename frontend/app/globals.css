@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@plugin "tailwindcss-animate";
 
 *, *::before, *::after {
   box-sizing: border-box;

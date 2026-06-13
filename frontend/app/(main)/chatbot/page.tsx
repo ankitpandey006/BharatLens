@@ -22,6 +22,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
+import { apiClient } from "@/lib/api/client";
 
 // ─── Types ─────────────────────────────────────────────────────────
 
@@ -180,13 +181,29 @@ export default function ChatbotPage() {
     setMessages((prev) => [...prev, userMsg]);
     setInput("");
 
-    // Simulate AI response (placeholder — plug in a real API later)
-    setTimeout(() => {
-      const reply = buildReply(trimmed);
+    try {
+      const result = await apiClient<{ reply: string; fallbackUsed: boolean }>("/ai/chat", {
+        method: "POST",
+        body: JSON.stringify({ message: trimmed }),
+      });
+
+      const reply = result?.reply ?? "Sorry, I couldn't process that request. Please try again.";
       const aiMsg: ChatMessage = { id: nextId(), role: "assistant", content: reply };
       setMessages((prev) => [...prev, aiMsg]);
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : "Something went wrong. Please try again.";
+      const fallbackReply = buildReply(trimmed);
+      const aiMsg: ChatMessage = {
+        id: nextId(),
+        role: "assistant",
+        content: errorMsg.includes("quota") || errorMsg.includes("rate")
+          ? "Server is busy. Please try again in a moment. Meanwhile:\n\n" + fallbackReply
+          : fallbackReply,
+      };
+      setMessages((prev) => [...prev, aiMsg]);
+    } finally {
       setSending(false);
-    }, 800);
+    }
   };
 
   // ── Handle Enter key ─────────────────────────────────────────────
@@ -575,57 +592,41 @@ export default function ChatbotPage() {
   );
 }
 
-// ─── Simple reply builder (placeholder — replace with real AI) ────
+// ─── Simple reply builder (last-resort fallback — no mock data) ────
 
 function buildReply(userMessage: string): string {
   const lower = userMessage.toLowerCase();
 
-  if (lower.includes("scheme") || lower.includes("eligible")) {
+  if (lower.includes("scheme") || lower.includes("yojana") || lower.includes("eligible")) {
     return (
-      "Great question! Based on your profile details, I'd recommend checking out:\n\n" +
-      "• **Pradhan Mantri Awas Yojana** – Housing for all\n" +
-      "• **PM-KISAN** – Income support for farmers\n" +
-      "• **Stand-Up India** – Financing for SC/ST & women\n\n" +
-      "Would you like me to filter these by your state or income category?"
+      "BharatLens ke verified database mein aapke sawaal se related data currently available nahi hai. " +
+      "Kripya Schemes section mein browse karein ya dobara poochhein."
     );
   }
 
-  if (lower.includes("scholarship")) {
+  if (lower.includes("scholarship") || lower.includes("fellowship") || lower.includes("grant")) {
     return (
-      "Here are scholarships matching your profile:\n\n" +
-      "• **National Scholarship Portal** – Central sector schemes\n" +
-      "• **Post-Matric Scholarship** – For SC/ST/OBC students\n" +
-      "• **AICTE Pragati** – For girl students\n\n" +
-      "Head to the Scholarships section to explore all options!"
+      "BharatLens ke verified database mein aapke sawaal se related data currently available nahi hai. " +
+      "Kripya Scholarships section mein browse karein."
     );
   }
 
-  if (lower.includes("job") || lower.includes("government")) {
+  if (lower.includes("job") || lower.includes("recruitment") || lower.includes("vacancy") || lower.includes("naukri")) {
     return (
-      "Upcoming government opportunities:\n\n" +
-      "• **SSC CGL 2025** – Graduate level exams\n" +
-      "• **UPSC Civil Services** – Preliminary exams\n" +
-      "• **State PSC** – Various state-level openings\n\n" +
-      "Check the Jobs section for full details and application links."
+      "BharatLens ke verified database mein aapke sawaal se related data currently available nahi hai. " +
+      "Kripya Jobs section mein browse karein."
     );
   }
 
-  if (lower.includes("exam") || lower.includes("notification")) {
+  if (lower.includes("exam") || lower.includes("notification") || lower.includes("result")) {
     return (
-      "Recent exam notifications:\n\n" +
-      "• **NEET PG 2025** – Application deadline extended\n" +
-      "• **JEE Main 2025** – Session 2 results out\n" +
-      "• **CTET 2025** – Application form released\n\n" +
-      "Visit the Exams page for more."
+      "BharatLens ke verified database mein aapke sawaal se related data currently available nahi hai. " +
+      "Kripya Exams section mein browse karein."
     );
   }
 
   return (
-    "I can help you find schemes, scholarships, jobs, and exams tailored to your profile. " +
-    "Try asking:\n\n" +
-    "• \"Which schemes am I eligible for?\"\n" +
-    "• \"Find scholarships for students\"\n" +
-    "• \"Latest government jobs\"\n" +
-    "• \"Upcoming exam notifications\""
+    "BharatLens ke verified database mein aapke sawaal se related data currently available nahi hai. " +
+    "Kripya Schemes, Scholarships, Jobs, ya Exams sections mein browse karein ya apna sawaal dobara poochhein."
   );
 }

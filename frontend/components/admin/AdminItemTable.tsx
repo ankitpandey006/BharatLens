@@ -11,13 +11,21 @@ interface AdminItemTableProps {
   onRowClick?: (item: BackendAdminContentItem) => void;
 }
 
-const statusValues: ItemStatus[] = [
-  "ai_processed",
-  "pending_verification",
-  "approved",
-  "rejected",
-  "published",
-];
+function getItemTitle(item: BackendAdminContentItem): string {
+  const record = item as Record<string, unknown>;
+  return String(record.title || record.raw_title || "Untitled Item");
+}
+
+function getItemType(item: BackendAdminContentItem): string {
+  const record = item as Record<string, unknown>;
+  const itemType = String(record.type || record.item_type || "scheme");
+  return itemType.charAt(0).toUpperCase() + itemType.slice(1);
+}
+
+function getItemStatus(item: BackendAdminContentItem): ItemStatus {
+  const record = item as Record<string, unknown>;
+  return normalizeStatus(String(record.verification_status || record.status || ""));
+}
 
 function normalizeStatus(status?: string): ItemStatus {
   if (!status) {
@@ -26,33 +34,23 @@ function normalizeStatus(status?: string): ItemStatus {
 
   const s = String(status).toLowerCase();
 
-  // Map DB processing_status values to UI statuses
-  if (s === "collected" || s === "ai_processed") return "pending_verification";
-  if (s === "processing") return "approved";
-  if (s === "failed") return "rejected";
-  if (s === "processed") return "published";
+  // Direct passthrough for known verification_status values from backend
+  const validStatuses: ItemStatus[] = [
+    "pending", "verified_ready", "approved", "rejected", "published",
+    "duplicate", "failed", "ai_processed", "pending_verification",
+  ];
 
-  if (statusValues.includes(s as ItemStatus)) {
+  if (validStatuses.includes(s as ItemStatus)) {
     return s as ItemStatus;
   }
 
+  // Map legacy processing_status values
+  if (s === "collected") return "pending_verification";
+  if (s === "processing") return "approved";
+  if (s === "processed") return "published";
+  if (s === "failed") return "failed";
+
   return "pending_verification";
-}
-
-function getItemTitle(item: BackendAdminContentItem): string {
-  const rawTitle = (item as Record<string, unknown>).raw_title as string | undefined;
-  return item.title || rawTitle || "Untitled Item";
-}
-
-function getItemType(item: BackendAdminContentItem): string {
-  const rawType = (item as Record<string, unknown>).type as string | undefined;
-  const itemType = item.item_type || rawType || "scheme";
-  return itemType.charAt(0).toUpperCase() + itemType.slice(1);
-}
-
-function getItemStatus(item: BackendAdminContentItem): ItemStatus {
-  const rawProcessingStatus = (item as Record<string, unknown>).processing_status as string | undefined;
-  return normalizeStatus(rawProcessingStatus || item.verification_status || item.status);
 }
 
 export default function AdminItemTable({
@@ -95,10 +93,11 @@ export default function AdminItemTable({
             <tr className="border-b border-[#E5E7EB] bg-[#F5F3EE] text-left text-sm font-semibold text-[#1A3C6E]">
               <th className="px-4 py-4">Title</th>
               <th className="px-4 py-4">Type</th>
+              <th className="px-4 py-4">Action</th>
               <th className="px-4 py-4">Status</th>
               <th className="px-4 py-4">Published</th>
               <th className="px-4 py-4">Updated</th>
-              <th className="px-4 py-4">Action</th>
+              <th className="px-4 py-4">Review</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[#E5E7EB]">
@@ -110,6 +109,12 @@ export default function AdminItemTable({
               const updatedAt = item.updated_at || item.created_at;
               const updatedLabel = updatedAt ? format(new Date(updatedAt), "MMM dd, yyyy") : "-";
 
+              const record = item as Record<string, unknown>;
+              const contentAction = (record.content_action || record.sub_category) as string | undefined;
+              const actionLabel = contentAction
+                ? contentAction.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase())
+                : '-';
+
               return (
                 <tr
                   key={item.id}
@@ -120,6 +125,15 @@ export default function AdminItemTable({
                   </td>
                   <td className="px-4 py-4 align-top text-sm text-[#111827]" onClick={() => onRowClick?.(item)}>
                     {itemType}
+                  </td>
+                  <td className="px-4 py-4 align-top text-sm" onClick={() => onRowClick?.(item)}>
+                    {contentAction ? (
+                      <span className="rounded-md bg-purple-50 px-2 py-0.5 text-xs font-medium text-purple-700">
+                        {actionLabel}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-[#111827]/40">-</span>
+                    )}
                   </td>
                   <td className="px-4 py-4 align-top" onClick={() => onRowClick?.(item)}>
                     <StatusBadge status={status} size="sm" />

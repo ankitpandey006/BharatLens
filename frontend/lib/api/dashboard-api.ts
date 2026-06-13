@@ -21,8 +21,15 @@ export interface DashboardSummary {
   recommendations: Array<{
     id: string;
     title: string;
+    itemId: string;
+    itemType: string;
     match: string;
+    matchScore: number;
     tag: string;
+    deadline?: string;
+    state?: string;
+    description?: string;
+    reason: string;
   }>;
   notificationsList: Array<{
     id: string;
@@ -32,9 +39,21 @@ export interface DashboardSummary {
     created_at?: string;
   }>;
   todayUpdates: Array<{
+    id: string;
     title: string;
     type: string;
     description: string;
+    itemType?: string;
+    itemId?: string;
+  }>;
+  savedItems: Array<{
+    id: string;
+    itemId: string;
+    itemType: string;
+    title: string;
+    deadline?: string;
+    officialUrl?: string;
+    savedAt?: string;
   }>;
 }
 

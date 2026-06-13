@@ -30,6 +30,13 @@ import {
   updateAdminItemHandler,
   verifyAdminSourceHandler,
   updateUserRoleHandler,
+  bulkApproveHandler,
+  bulkRejectHandler,
+  bulkPublishHandler,
+  bulkUnpublishHandler,
+  bulkRestoreHandler,
+  bulkDeleteHandler,
+  bulkProcessAiHandler,
 } from "../controllers/admin.controller";
 import { validate } from "../middlewares/validate.middleware";
 import {
@@ -44,6 +51,8 @@ import {
   adminUpdateBodySchema,
   adminUserRoleSchema,
   adminUserParamSchema,
+  adminBulkActionSchema,
+  adminBulkAiProcessSchema,
 } from "../validators/admin.validator";
 
 const router = Router();
@@ -79,6 +88,44 @@ router.patch(
 );
 router.patch("/collected-data/:id/unpublish", unpublishCollectedDataHandler);
 router.patch("/collected-data/:id/delete", deleteCollectedDataHandler);
+
+// ── Bulk Actions ──
+router.post(
+  "/collected-data/bulk-approve",
+  validate(adminBulkActionSchema, "body"),
+  bulkApproveHandler,
+);
+router.post(
+  "/collected-data/bulk-reject",
+  validate(adminBulkActionSchema, "body"),
+  bulkRejectHandler,
+);
+router.post(
+  "/collected-data/bulk-publish",
+  validate(adminBulkActionSchema, "body"),
+  bulkPublishHandler,
+);
+router.post(
+  "/collected-data/bulk-unpublish",
+  validate(adminBulkActionSchema, "body"),
+  bulkUnpublishHandler,
+);
+router.post(
+  "/collected-data/bulk-restore",
+  validate(adminBulkActionSchema, "body"),
+  bulkRestoreHandler,
+);
+router.post(
+  "/collected-data/bulk-delete",
+  validate(adminBulkActionSchema, "body"),
+  bulkDeleteHandler,
+);
+router.post(
+  "/collected-data/bulk-process-ai",
+  validate(adminBulkAiProcessSchema, "body"),
+  bulkProcessAiHandler,
+);
+
 router.get("/verification", validate(adminQuerySchema, "query"), getAdminCollectedDataHandler);
 
 // ── Status-based views (public table items grouped by status) ──

@@ -25,6 +25,13 @@ import {
   publishCollectedData,
   unpublishCollectedData,
   deleteCollectedData,
+  bulkApproveCollectedData,
+  bulkRejectCollectedData,
+  bulkPublishCollectedData,
+  bulkUnpublishCollectedData,
+  bulkRestoreCollectedData,
+  bulkDeleteCollectedData,
+  bulkProcessAiCollectedData,
 } from "../services/admin.service";
 import type { AdminItemType, AdminItemUpdates } from "../repositories/admin.repository";
 
@@ -268,20 +275,38 @@ export const getAdminCollectedDataByIdHandler = asyncHandler(async (req: Request
 
 export const approveCollectedDataHandler = asyncHandler(async (req: Request, res: Response) => {
   const { id } = req.params as { id: string };
-  const { admin_notes } = req.validatedBody as { admin_notes?: string };
+  const body = req.validatedBody as Record<string, unknown>;
+  const admin_notes = body.admin_notes as string | undefined;
   const user = req.user;
 
   if (!user) {
     return sendError(res, "Authentication required", 401);
   }
 
-  const item = await approveCollectedData(id, user.id, admin_notes);
+  // Extract editable fields (everything except admin_notes which goes to the notes field)
+  const edits: Record<string, unknown> = {};
+  const editFields = [
+    "title", "description", "sub_category", "content_action", "category", "item_type",
+    "state", "deadline", "official_url", "source_url",
+    "eligibility", "benefits", "organization", "vacancies",
+    "education", "age_limit", "salary", "application_fee",
+    "selection_process", "conducting_body", "exam_date",
+    "amount", "income_limit", "education_level",
+    "required_documents", "start_date",
+  ];
+  for (const field of editFields) {
+    if (body[field] !== undefined) {
+      edits[field] = body[field];
+    }
+  }
+
+  const item = await approveCollectedData(id, user.id, admin_notes, Object.keys(edits).length > 0 ? edits : undefined);
 
   if (!item) {
     return sendError(res, "Collected data not found", 404);
   }
 
-  sendSuccess(res, "Collected data approved", item);
+  sendSuccess(res, "Collected data approved with latest changes", item);
 });
 
 export const rejectCollectedDataHandler = asyncHandler(async (req: Request, res: Response) => {
@@ -366,4 +391,69 @@ export const publishCollectedDataHandler = asyncHandler(async (req: Request, res
   const inserted = await publishCollectedData(id, itemType, payload, user.id);
 
   sendSuccess(res, "Collected data published", inserted);
+});
+
+// ─── Bulk Action Handlers ─────────────────────────────────────────
+
+export const bulkApproveHandler = asyncHandler(async (req: Request, res: Response) => {
+  const user = req.user;
+  if (!user) return sendError(res, "Authentication required", 401);
+
+  const { ids, reason } = req.validatedBody as { ids: string[]; reason?: string };
+  const result = await bulkApproveCollectedData(ids, user.id, reason);
+  sendSuccess(res, "Bulk approve completed", result);
+});
+
+export const bulkRejectHandler = asyncHandler(async (req: Request, res: Response) => {
+  const user = req.user;
+  if (!user) return sendError(res, "Authentication required", 401);
+
+  const { ids, reason } = req.validatedBody as { ids: string[]; reason?: string };
+  const result = await bulkRejectCollectedData(ids, user.id, reason);
+  sendSuccess(res, "Bulk reject completed", result);
+});
+
+export const bulkPublishHandler = asyncHandler(async (req: Request, res: Response) => {
+  const user = req.user;
+  if (!user) return sendError(res, "Authentication required", 401);
+
+  const { ids } = req.validatedBody as { ids: string[] };
+  const result = await bulkPublishCollectedData(ids, user.id);
+  sendSuccess(res, "Bulk publish completed", result);
+});
+
+export const bulkUnpublishHandler = asyncHandler(async (req: Request, res: Response) => {
+  const user = req.user;
+  if (!user) return sendError(res, "Authentication required", 401);
+
+  const { ids } = req.validatedBody as { ids: string[] };
+  const result = await bulkUnpublishCollectedData(ids, user.id);
+  sendSuccess(res, "Bulk unpublish completed", result);
+});
+
+export const bulkRestoreHandler = asyncHandler(async (req: Request, res: Response) => {
+  const user = req.user;
+  if (!user) return sendError(res, "Authentication required", 401);
+
+  const { ids } = req.validatedBody as { ids: string[] };
+  const result = await bulkRestoreCollectedData(ids, user.id);
+  sendSuccess(res, "Bulk restore completed", result);
+});
+
+export const bulkDeleteHandler = asyncHandler(async (req: Request, res: Response) => {
+  const user = req.user;
+  if (!user) return sendError(res, "Authentication required", 401);
+
+  const { ids } = req.validatedBody as { ids: string[] };
+  const result = await bulkDeleteCollectedData(ids, user.id);
+  sendSuccess(res, "Bulk delete completed", result);
+});
+
+export const bulkProcessAiHandler = asyncHandler(async (req: Request, res: Response) => {
+  const user = req.user;
+  if (!user) return sendError(res, "Authentication required", 401);
+
+  const { ids } = req.validatedBody as { ids: string[] };
+  const result = await bulkProcessAiCollectedData(ids, user.id);
+  sendSuccess(res, "Bulk AI processing initiated", result);
 });

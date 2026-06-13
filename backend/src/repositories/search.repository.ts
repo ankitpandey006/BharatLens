@@ -27,9 +27,9 @@ function mapScheme(scheme: SchemeItem): SearchResult {
     id: scheme.id,
     type: "scheme",
     title: scheme.title,
-    description: scheme.description,
-    category: scheme.category,
-    provider: scheme.provider,
+    description: scheme.description || "",
+    category: scheme.category || "",
+    provider: scheme.provider || "",
     source: "Scheme",
   };
 }
@@ -39,9 +39,9 @@ function mapScholarship(item: ScholarshipItem): SearchResult {
     id: item.id,
     type: "scholarship",
     title: item.title,
-    description: item.description,
-    category: item.category,
-    provider: item.provider,
+    description: item.description || "",
+    category: item.category || "",
+    provider: item.provider || "",
     source: "Scholarship",
   };
 }
@@ -51,9 +51,9 @@ function mapJob(item: JobItem): SearchResult {
     id: item.id,
     type: "job",
     title: item.title,
-    description: item.description,
-    category: item.qualification,
-    provider: item.department,
+    description: item.description || "",
+    category: item.qualification || "",
+    provider: item.department || "",
     source: "Job",
   };
 }
@@ -63,9 +63,9 @@ function mapExam(item: ExamItem): SearchResult {
     id: item.id,
     type: "exam",
     title: item.title,
-    description: item.description,
-    category: item.level,
-    provider: item.examBody,
+    description: item.description || "",
+    category: item.category || "",
+    provider: item.conducting_body || "",
     source: "Exam",
   };
 }

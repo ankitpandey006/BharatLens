@@ -20,16 +20,16 @@ interface SavedItemCardProps {
 
 const typeStyles: Record<SavedItemCardData["type"], string> = {
   Scheme: "bg-[#DBEAFE] text-[#1A3C6E]",
-  Scholarship: "bg-[#E0E7FF] text-[#3730A3]",
-  Job: "bg-[#DCFCE7] text-[#166534]",
-  Exam: "bg-[#FEF3C7] text-[#92400E]",
+  Scholarship: "bg-[#EEF2FF] text-[#1A3C6E]",
+  Job: "bg-[#EFF6FF] text-[#1A3C6E]",
+  Exam: "bg-[#F0F5FA] text-[#1A3C6E]",
 };
 
 const statusStyles: Record<SavedItemCardData["status"], string> = {
   Open: "bg-[#DBEAFE] text-[#1A3C6E]",
-  "Closing Soon": "bg-[#FEF3C7] text-[#92400E]",
+  "Closing Soon": "bg-[#EEF2FF] text-[#1A3C6E]",
   Closed: "bg-[#F3F4F6] text-[#374151]",
-  Upcoming: "bg-[#E0E7FF] text-[#3730A3]",
+  Upcoming: "bg-[#EFF6FF] text-[#1A3C6E]",
 };
 
 export default function SavedItemCard({ item, onRemove, removing }: SavedItemCardProps) {

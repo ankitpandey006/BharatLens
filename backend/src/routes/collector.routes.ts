@@ -1,5 +1,7 @@
 
 import { Router } from "express";
+import { requireAuth } from "../middlewares/auth.middleware";
+import { requireAdminOrModerator } from "../middlewares/role.middleware";
 import {
   getCollectorStatus,
   getCollectorStatsHandler,
@@ -17,6 +19,9 @@ import {
 } from "../controllers/collector.controller";
 
 const router = Router();
+
+// All collector routes require admin/moderator auth
+router.use(requireAuth, requireAdminOrModerator);
 
 router.get("/status", getCollectorStatus);
 router.get("/stats", getCollectorStatsHandler);

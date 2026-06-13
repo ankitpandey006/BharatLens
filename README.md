@@ -174,3 +174,37 @@ SSC selector improve
 UGC/AICTE scraper filtering
 process/clean/classify me body validation add karo
 Ab Phase 4 almost complete hai, but “100%” bolne se pehle ye 5 cheezein fix karni hain.
+
+
+
+
+
+Different Sources
+RSS / Website / PDF / API
+        ↓
+AI Data Collection
+        ↓
+AI Clean + Extract
+        ↓
+AI Duplicate Detection
+        ↓
+AI Fake / Source Verification
+        ↓
+Pending Admin Verification
+        ↓
+Admin Approve / Reject
+        ↓
+Publish on Website
+        ↓
+AI Personalized Recommendation
+        ↓
+User Dashboard + Notifications
+
+
+
+
+Phase 1 Data Collection: ~90-95%
+Phase 2 AI Processing & Verification: 0-20%
+Phase 3 Recommendation Engine: Not Started
+Phase 4 AI Chatbot: Not Started
+Phase 5 Production Hardening & Testing: Pending

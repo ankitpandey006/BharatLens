@@ -11,7 +11,7 @@ export default function StatusBadge({
   status,
   size = "md",
 }: StatusBadgeProps) {
-  const styles = {
+  const styles: Record<ItemStatus, { bg: string; text: string; border: string; label: string }> = {
     ai_processed: {
       bg: "bg-[#111827]/5",
       text: "text-[#111827]",
@@ -29,6 +29,24 @@ export default function StatusBadge({
       text: "text-yellow-700",
       border: "border-yellow-200",
       label: "Pending",
+    },
+    verified_ready: {
+      bg: "bg-sky-50",
+      text: "text-sky-700",
+      border: "border-sky-200",
+      label: "Verified Ready",
+    },
+    duplicate: {
+      bg: "bg-orange-50",
+      text: "text-orange-700",
+      border: "border-orange-200",
+      label: "Duplicate",
+    },
+    failed: {
+      bg: "bg-red-50",
+      text: "text-red-700",
+      border: "border-red-200",
+      label: "Failed",
     },
     approved: {
       bg: "bg-blue-50",

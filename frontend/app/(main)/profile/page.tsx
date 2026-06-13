@@ -161,17 +161,17 @@ export default function ProfilePage() {
             <p className="mt-1 text-sm text-[#111827]/55">{user.email}</p>
           </div>
 
-          <div className={`rounded-2xl border p-6 shadow-sm sm:rounded-3xl sm:p-7 ${isComplete ? "border-green-200 bg-gradient-to-br from-green-50 to-green-100/50" : "border-[#E5E7EB] bg-white"}`}>
+          <div className={`rounded-2xl border p-6 shadow-sm sm:rounded-3xl sm:p-7 ${isComplete ? "border-[#9BB6E5] bg-gradient-to-br from-[#EEF2FF] to-[#DBEAFE]/50" : "border-[#E5E7EB] bg-white"}`}>
             <div className="flex items-center justify-between">
               <p className="text-sm font-semibold text-[#1A3C6E]">Profile Completion</p>
               {isComplete ? (
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-green-600/10 px-3 py-1 text-xs font-semibold text-green-700"><CheckCircle2 size={14} />Complete</span>
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-[#3B82F6]/10 px-3 py-1 text-xs font-semibold text-[#1A3C6E]"><CheckCircle2 size={14} />Complete</span>
               ) : (
                 <span className="rounded-full bg-[#F5F3EE] px-3 py-1 text-xs font-semibold text-[#111827]/60">{completionPercent}%</span>
               )}
             </div>
             <div className="mt-4 h-2.5 rounded-full bg-[#E5E7EB]">
-              <div className={`h-2.5 rounded-full transition-all duration-700 ease-out ${isComplete ? "bg-gradient-to-r from-green-500 to-emerald-500" : "bg-gradient-to-r from-[#3B82F6] to-[#1A3C6E]"}`} style={{ width: `${Math.max(completionPercent, 4)}%` }} />
+              <div className={`h-2.5 rounded-full transition-all duration-700 ease-out ${isComplete ? "bg-gradient-to-r from-[#3B82F6] to-[#1A3C6E]" : "bg-gradient-to-r from-[#3B82F6] to-[#1A3C6E]"}`} style={{ width: `${Math.max(completionPercent, 4)}%` }} />
             </div>
             <p className="mt-3 text-sm leading-5 text-[#111827]/60">
               {isComplete ? "✓ Your profile is complete! You'll get the best personalized recommendations." : `Complete your profile (${completionPercent}%) for better recommendations.`}
@@ -184,14 +184,14 @@ export default function ProfilePage() {
           </div>
 
           {!isComplete && missingFields.length > 0 && (
-            <div className="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 shadow-sm">
+            <div className="rounded-2xl border border-[#3B82F6]/20 bg-[#EEF2FF] px-5 py-4 shadow-sm">
               <div className="flex items-start gap-3">
-                <AlertCircle size={16} className="mt-0.5 shrink-0 text-amber-600" />
+                <AlertCircle size={16} className="mt-0.5 shrink-0 text-[#1A3C6E]" />
                 <div>
-                  <p className="text-sm font-semibold text-amber-900">{missingFields.length} field{missingFields.length !== 1 ? "s" : ""} missing</p>
+                  <p className="text-sm font-semibold text-[#1A3C6E]">{missingFields.length} field{missingFields.length !== 1 ? "s" : ""} missing</p>
                   <ul className="mt-2 space-y-1">
                     {missingFields.map((f) => (
-                      <li key={f} className="text-xs text-amber-800">{formatLabel(f)}</li>
+                      <li key={f} className="text-xs text-[#1A3C6E]/80">{formatLabel(f)}</li>
                     ))}
                   </ul>
                 </div>

@@ -4,20 +4,29 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
-  FileText,
+  AlertCircle,
   CheckCircle,
   XCircle,
+  FileText,
   Database,
-  Users,
   Zap,
-  BarChart3,
-  Settings,
-  AlertCircle,
+  Users,
 } from "lucide-react";
 
 interface AdminSidebarProps {
   onNavigate?: () => void;
 }
+
+const NAV_ITEMS = [
+  { icon: LayoutDashboard, label: "Dashboard", href: "/admin" },
+  { icon: AlertCircle, label: "Verification Queue", href: "/admin/verification" },
+  { icon: CheckCircle, label: "Approved", href: "/admin/approved" },
+  { icon: FileText, label: "Published", href: "/admin/published" },
+  { icon: XCircle, label: "Rejected", href: "/admin/rejected" },
+  { icon: Database, label: "Sources", href: "/admin/sources" },
+  { icon: Zap, label: "AI Logs", href: "/admin/updates" },
+  { icon: Users, label: "Users", href: "/admin/users" },
+];
 
 export default function AdminSidebar({ onNavigate }: AdminSidebarProps) {
   const pathname = usePathname();
@@ -28,75 +37,12 @@ export default function AdminSidebar({ onNavigate }: AdminSidebarProps) {
     return false;
   };
 
-  const navItems = [
-    {
-      icon: LayoutDashboard,
-      label: "Dashboard",
-      href: "/admin",
-      badge: null,
-    },
-    {
-      icon: AlertCircle,
-      label: "Verification",
-      href: "/admin/verification",
-      badge: null,
-    },
-    {
-      icon: CheckCircle,
-      label: "Approved",
-      href: "/admin/approved",
-      badge: null,
-    },
-    {
-      icon: XCircle,
-      label: "Rejected",
-      href: "/admin/rejected",
-      badge: null,
-    },
-    {
-      icon: FileText,
-      label: "Published",
-      href: "/admin/published",
-      badge: null,
-    },
-    {
-      icon: Database,
-      label: "AI Sources",
-      href: "/admin/sources",
-      badge: null,
-    },
-    {
-      icon: Zap,
-      label: "Recommendations",
-      href: "/admin/recommendations",
-      badge: null,
-    },
-    {
-      icon: Users,
-      label: "Users",
-      href: "/admin/users",
-      badge: null,
-    },
-    {
-      icon: BarChart3,
-      label: "Analytics",
-      href: "/admin/analytics",
-      badge: null,
-    },
-    {
-      icon: Settings,
-      label: "Settings",
-      href: "/admin/settings",
-      badge: null,
-    },
-  ];
-
   return (
     <aside className="sticky top-0 h-screen w-64 overflow-y-auto border-r border-[#E5E7EB] bg-white py-6">
       <div className="px-6">
         <div className="mb-8 flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#1A3C6E] text-sm font-bold text-white">
-            BA
+            BL
           </div>
           <div>
             <p className="text-sm font-bold text-[#1A3C6E]">BharatLens</p>
@@ -105,8 +51,8 @@ export default function AdminSidebar({ onNavigate }: AdminSidebarProps) {
         </div>
       </div>
 
-      <nav className="space-y-1 px-3">
-        {navItems.map((item) => {
+      <nav className="space-y-0.5 px-3">
+        {NAV_ITEMS.map((item) => {
           const Icon = item.icon;
           const isItemActive = isActive(item.href);
 
@@ -115,28 +61,16 @@ export default function AdminSidebar({ onNavigate }: AdminSidebarProps) {
               key={item.href}
               href={item.href}
               onClick={onNavigate}
-              className={`group relative flex items-center justify-between gap-3 rounded-lg px-4 py-2.5 transition ${
+              className={`group relative flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium transition ${
                 isItemActive
-                  ? "bg-[#3B82F6]/10 text-[#1A3C6E]"
+                  ? "bg-[#1A3C6E] text-white"
                   : "text-[#111827]/70 hover:bg-[#F5F3EE] hover:text-[#1A3C6E]"
               }`}
             >
-              <div className="flex items-center gap-3">
-                <Icon
-                  size={18}
-                  className={`transition ${
-                    isItemActive ? "text-[#1A3C6E]" : "text-[#111827]/60"
-                  }`}
-                />
-                <span className="text-sm font-medium">{item.label}</span>
-              </div>
-              {item.badge && (
-                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white">
-                  {item.badge}
-                </span>
-              )}
+              <Icon size={18} />
+              <span>{item.label}</span>
               {isItemActive && (
-                <div className="absolute left-0 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-lg bg-[#1A3C6E]" />
+                <div className="absolute right-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded-l-full bg-white" />
               )}
             </Link>
           );
@@ -144,21 +78,21 @@ export default function AdminSidebar({ onNavigate }: AdminSidebarProps) {
       </nav>
 
       <div className="mt-8 border-t border-[#E5E7EB] px-3 pt-8">
-        <p className="px-4 text-xs font-semibold uppercase text-[#111827]/60">
-          System Info
-        </p>
-        <div className="mt-4 space-y-2 px-4">
+        <div className="px-4 text-xs font-semibold uppercase text-[#111827]/60">
+          Pipeline Status
+        </div>
+        <div className="mt-4 space-y-3 px-4">
           <div className="flex items-center justify-between text-xs">
-            <span className="text-[#111827]/60">AI Processing:</span>
+            <span className="text-[#111827]/60">AI Collector</span>
             <span className="inline-flex h-2 w-2 rounded-full bg-green-500" />
           </div>
           <div className="flex items-center justify-between text-xs">
-            <span className="text-[#111827]/60">DB Status:</span>
+            <span className="text-[#111827]/60">AI Processing</span>
             <span className="inline-flex h-2 w-2 rounded-full bg-green-500" />
           </div>
           <div className="flex items-center justify-between text-xs">
-            <span className="text-[#111827]/60">Last Sync:</span>
-            <span className="text-[#111827]">2 min ago</span>
+            <span className="text-[#111827]/60">Database</span>
+            <span className="inline-flex h-2 w-2 rounded-full bg-green-500" />
           </div>
         </div>
       </div>

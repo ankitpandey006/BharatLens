@@ -17,8 +17,19 @@ export const listRecommendationsHandler = asyncHandler(async (req: Request, res:
   }
 
   const query = req.validatedQuery as { page?: number; limit?: number };
-  const result = await getRecommendations(user.id, query.page ?? 1, query.limit ?? 20);
-  sendSuccess(res, "Recommendations fetched successfully", result);
+  const page = query.page ?? 1;
+  const limit = query.limit ?? 20;
+  const result = await getRecommendations(user.id, page, limit, user);
+  // Return with pagination metadata for frontend compatibility
+  const totalPages = Math.ceil(result.count / limit);
+  sendSuccess(res, "Recommendations fetched successfully", result.items, {
+    page,
+    limit,
+    total: result.count,
+    totalPages,
+    hasNextPage: page < totalPages,
+    hasPreviousPage: page > 1,
+  });
 });
 
 export const getRecommendationsByTypeHandler = asyncHandler(async (req: Request, res: Response) => {
@@ -30,15 +41,25 @@ export const getRecommendationsByTypeHandler = asyncHandler(async (req: Request,
 
   const { itemType } = req.validatedParams as { itemType: string };
   const query = req.validatedQuery as { page?: number; limit?: number };
+  const page = query.page ?? 1;
+  const limit = query.limit ?? 20;
 
   const result = await getRecommendationsByItemType(
     user.id,
     itemType as RecommendationEntityType,
-    query.page ?? 1,
-    query.limit ?? 20,
+    page,
+    limit,
   );
 
-  sendSuccess(res, `Recommendations of type ${itemType} fetched successfully`, result);
+  const totalPages = Math.ceil(result.count / limit);
+  sendSuccess(res, `Recommendations of type ${itemType} fetched successfully`, result.items, {
+    page,
+    limit,
+    total: result.count,
+    totalPages,
+    hasNextPage: page < totalPages,
+    hasPreviousPage: page > 1,
+  });
 });
 
 export const generateRecommendationsHandler = asyncHandler(async (req: Request, res: Response) => {

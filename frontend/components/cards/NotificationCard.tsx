@@ -5,10 +5,10 @@ interface NotificationCardProps {
 }
 
 const typeStyles: Record<NotificationItem["type"], string> = {
-  Reminder: "bg-[#FEF3C7] text-[#92400E]",
+  Reminder: "bg-[#EEF2FF] text-[#1A3C6E]",
   Match: "bg-[#DBEAFE] text-[#1A3C6E]",
-  Update: "bg-[#E0E7FF] text-[#3730A3]",
-  "Saved Item": "bg-[#DCFCE7] text-[#166534]",
+  Update: "bg-[#EFF6FF] text-[#1A3C6E]",
+  "Saved Item": "bg-[#F0F5FA] text-[#1A3C6E]",
 };
 
 export default function NotificationCard({ notification }: NotificationCardProps) {

@@ -12,6 +12,10 @@ const envSchema = z.object({
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
   JWT_SECRET: z.string().min(32),
   DATA_GOV_API_KEY: z.string().optional(),
+  GEMINI_API_KEY: z.string().optional(),
+  GEMINI_MODEL: z.string().default("gemini-2.5-flash"),
+  AI_BATCH_LIMIT: z.coerce.number().positive().max(50).default(3),
+  GEMINI_REQUEST_DELAY_MS: z.coerce.number().positive().max(60000).default(15000),
   ENABLE_COLLECTOR_CRON: z.coerce.boolean().default(false),
 });
 
